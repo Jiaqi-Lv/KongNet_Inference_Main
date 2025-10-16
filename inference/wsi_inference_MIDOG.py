@@ -26,6 +26,7 @@ from inference.GrandQC_tissue_detection import process_single_slide
 from inference.data_utils import (
     collate_fn,
     detection_to_annotation_store,
+    download_weights_from_hf,
     imagenet_normalise_torch,
     slide_nms,
 )
@@ -33,8 +34,8 @@ from model.KongNet import get_KongNet
 from inference.prediction_utils import binary_det_post_process
 
 
-NUM_WORKERS = cpu_count() - 2 if cpu_count() > 2 else 1
-BATCH_SIZE = 16
+NUM_WORKERS = cpu_count() // 2 if cpu_count() > 2 else 1
+BATCH_SIZE = 32
 print(f"Using {NUM_WORKERS} workers for data processing")
 print(f"Using batch size of {BATCH_SIZE} for inference")
 
@@ -351,7 +352,16 @@ def start(
     wsi_reader = WSIReader.open(wsi_path)
     
     if mask_path is None:
-        grandQC_weights_path = "/media/u1910100/data/GrandQC_Tissue_Detection_MPP10.pth"
+        hf_repo_id = "TIACentre/GrandQC_Tissue_Detection"
+        checkpoint_name = "GrandQC_Tissue_Detection_MPP10.pth"
+        weights_dir = "./model_weights"
+        print(f"Downloading weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}")
+        os.makedirs(weights_dir, exist_ok=True)
+        grandQC_weights_path = download_weights_from_hf(
+            checkpoint_name=checkpoint_name,
+            repo_id=hf_repo_id,
+            save_dir=weights_dir
+        )
         tissue_mask = process_single_slide(wsi_path, grandQC_weights_path)
         mask_filename = f"{wsi_name_without_ext}_MASK.png"
         mask_path = os.path.join(save_dir, mask_filename)

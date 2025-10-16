@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 model_weights/
+test_input/
+test_output/
+./inference.sbatch

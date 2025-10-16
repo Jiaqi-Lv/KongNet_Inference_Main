@@ -51,9 +51,9 @@ if __name__ == "__main__":
 
     print("Models loaded")
 
-    wsi_dir = "/media/u1910100/data/slides"
-    save_dir = "/media/u1910100/data/overlays"
-    cache_dir = "/home/u1910100/Documents/cache"
+    wsi_dir = "/home/u1910100/Github/KongNet_Inference_Main/test_input"
+    save_dir = "/home/u1910100/Github/KongNet_Inference_Main/test_output"
+    cache_dir = "/home/u1910100/cloud_workspace/data/cache"
     wsi_list = os.listdir(wsi_dir)
 
 
