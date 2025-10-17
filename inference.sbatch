@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #SBATCH --job-name=KongNet_Infer # Job name for tracking
-#SBATCH --partition=gpu # Partition you wish to use (see above for list)
+#SBATCH --partition=dgxa100 # Partition you wish to use (see above for list)
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20     # Number of CPU threads used by your job
 #SBATCH --gres=gpu:1           # Number of GPUs to use 
@@ -28,6 +28,6 @@ echo "starting inference script"
 nvidia-smi
 lscpu
 
-python3.11 inference_MIDOG.py
+./example_scripts.sh
 
 echo "finished"

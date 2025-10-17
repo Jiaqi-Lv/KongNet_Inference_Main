@@ -36,16 +36,21 @@ python inference_MIDOG.py --input_dir /path/to/wsi/files --output_dir /path/to/r
 python inference_MIDOG.py --input_dir /path/to/wsi/files --single_wsi sample.svs --output_dir /path/to/results
 ```
 
-### 2. PanNuke Inference
+### 2. Basic PanNuke Inference
 
 ```bash
-python inference_panNuke.py --input_dir /path/to/input/images --output_dir /path/to/output
+# Process all WSI files in a directory
+python inference_panNuke.py --input_dir /path/to/wsi/files --output_dir /path/to/results
+
+# Process a single WSI file
+python inference_panNuke.py --input_dir /path/to/wsi/files --single_wsi sample.svs --output_dir /path/to/results
 ```
 
 ## 📖 Usage Examples
 
 ### Basic Usage
 
+#### MIDOG
 ```bash
 # Minimal command - uses default paths
 python inference_MIDOG.py
@@ -57,8 +62,21 @@ python inference_MIDOG.py \
     --cache_dir /tmp/cache
 ```
 
+#### PanNuke
+```bash
+# Minimal command - uses default paths
+python inference_panNuke.py
+
+# Specify input and output directories
+python inference_panNuke.py \
+    --input_dir /data/pannuke/wsi \
+    --output_dir /results/pannuke \
+    --cache_dir /tmp/cache
+```
+
 ### Model Configuration
 
+#### MIDOG
 ```bash
 # Use local model weights (bypass HuggingFace download)
 python inference_MIDOG.py \
@@ -72,8 +90,29 @@ python inference_MIDOG.py \
     --input_dir /data/wsi
 ```
 
+#### PanNuke
+```bash
+# Use local model weights (bypass HuggingFace download)
+python inference_panNuke.py \
+    --local_weights /path/to/pannuke_model1.pth /path/to/pannuke_model2.pth \
+    --input_dir /data/wsi
+
+# Use specific HuggingFace repository and checkpoint
+python inference_panNuke.py \
+    --hf_repo_id "TIACentre/KongNet_PanNuke" \
+    --checkpoint_name "KongNet_PanNuke_1.pth" \
+    --input_dir /data/wsi
+
+# Model ensemble with multiple checkpoints
+python inference_panNuke.py \
+    --checkpoint_name "KongNet_PanNuke_1.pth" \
+    --additional_checkpoints "KongNet_PanNuke_2.pth" "KongNet_PanNuke_3.pth" \
+    --input_dir /data/wsi
+```
+
 ### Processing Options
 
+#### MIDOG
 ```bash
 # Disable test time augmentation for faster inference
 python inference_MIDOG.py \
@@ -87,8 +126,23 @@ python inference_MIDOG.py \
     --input_dir /data/wsi
 ```
 
+#### PanNuke
+```bash
+# Disable test time augmentation for faster inference
+python inference_panNuke.py \
+    --no_tta \
+    --input_dir /data/wsi
+
+# Process single WSI with mask
+python inference_panNuke.py \
+    --single_wsi "sample.svs" \
+    --mask_dir /path/to/masks \
+    --input_dir /data/wsi
+```
+
 ### Advanced Examples
 
+#### MIDOG
 ```bash
 # Full configuration example
 python inference_MIDOG.py \
@@ -100,22 +154,67 @@ python inference_MIDOG.py \
     --checkpoint_name "KongNet_Det_MIDOG_1.pth" \
     --additional_checkpoints "KongNet_Det_MIDOG_2.pth" \
     --mask_dir /data/midog/tissue_masks
+
+# Batch processing with custom weights
+python inference_MIDOG.py \
+    --local_weights ./models/midog_fold1.pth ./models/midog_fold2.pth ./models/midog_fold3.pth \
+    --input_dir /data/test_cases \
+    --output_dir /results/ensemble_predictions \
+    --no_tta
+```
+
+#### PanNuke
+```bash
+# Full configuration example
+python inference_panNuke.py \
+    --input_dir /data/pannuke/test_set \
+    --output_dir /results/pannuke_predictions \
+    --cache_dir /fast_ssd/cache \
+    --weights_dir ./pretrained_models \
+    --hf_repo_id "TIACentre/KongNet_PanNuke" \
+    --checkpoint_name "KongNet_PanNuke_1.pth" \
+    --additional_checkpoints "KongNet_PanNuke_2.pth" \
+    --mask_dir /data/pannuke/tissue_masks
+
+# Batch processing with custom weights
+python inference_panNuke.py \
+    --local_weights ./models/pannuke_fold1.pth ./models/pannuke_fold2.pth ./models/pannuke_fold3.pth \
+    --input_dir /data/test_cases \
+    --output_dir /results/ensemble_predictions \
+    --no_tta
+
+# High-throughput processing with optimized settings
+python inference_panNuke.py \
+    --input_dir /data/large_dataset \
+    --output_dir /results/batch_pannuke \
+    --cache_dir /nvme_ssd/cache \
+    --no_tta \
+    --local_weights ./best_pannuke_model.pth
 ```
 
 ## 🔧 Command Line Arguments
 
-### Required Arguments
+### Required Arguments (Both Scripts)
 - `--input_dir`: Directory containing WSI files
 - `--output_dir`: Directory to save results
 
 ### Model Configuration
+
+#### MIDOG
 - `--hf_repo_id`: HuggingFace repository ID (default: "TIACentre/KongNet_MIDOG")
 - `--checkpoint_name`: Main checkpoint filename (default: "KongNet_Det_MIDOG_1.pth")
 - `--additional_checkpoints`: Additional checkpoints for ensemble
 - `--local_weights`: Use local weight files instead of HuggingFace
 - `--weights_dir`: Directory to store downloaded weights (default: "./model_weights")
 
-### Processing Options
+#### PanNuke
+- `--hf_repo_id`: HuggingFace repository ID (default: "TIACentre/KongNet_PanNuke")
+- `--checkpoint_name`: Main checkpoint filename (default: "KongNet_PanNuke_1.pth")
+- `--additional_checkpoints`: Additional checkpoints for ensemble
+- `--local_weights`: Use local weight files instead of HuggingFace
+- `--weights_dir`: Directory to store downloaded weights (default: "./model_weights")
+
+### Processing Options (Both Scripts)
 - `--no_tta`: Disable test time augmentation
 - `--single_wsi`: Process only specified WSI filename
 - `--mask_dir`: Directory containing tissue masks
@@ -147,7 +246,20 @@ python inference_MIDOG.py \
 
 ### PanNuke Output
 - **Format**: HDF5 with segmentation masks
+- **Location**: `{output_dir}/{wsi_name}_segmentation.h5`
 - **Classes**: 6 cell types (Neoplastic, Inflammatory, Connective, Dead, Epithelial, Overall)
+- **Content**:
+  ```python
+  # Load results
+  import h5py
+  with h5py.File('sample_segmentation.h5', 'r') as f:
+      neoplastic_mask = f['neoplastic'][:]
+      inflammatory_mask = f['inflammatory'][:]
+      connective_mask = f['connective'][:]
+      dead_mask = f['dead'][:]
+      epithelial_mask = f['epithelial'][:]
+      overall_mask = f['overall'][:]
+  ```
 
 ## 🐛 Troubleshooting
 
@@ -164,6 +276,7 @@ python inference_MIDOG.py \
    # Check internet connection and try again
    # Or use local weights:
    python inference_MIDOG.py --local_weights /path/to/model.pth
+   python inference_panNuke.py --local_weights /path/to/model.pth
    ```
 
 3. **WSI File Not Found**

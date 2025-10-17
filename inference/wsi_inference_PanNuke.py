@@ -1,406 +1,64 @@
-import concurrent.futures
-import os
-import shutil
-
-from concurrent.futures import ThreadPoolExecutor
-
-import time
-import skimage
-import numpy as np
-
-import torch
-import ttach as tta
-import zarr
-from numcodecs import Blosc
-from tiatoolbox.tools.patchextraction import SlidingWindowPatchExtractor
-from tiatoolbox.wsicore.wsireader import VirtualWSIReader, WSIReader
-from torch.amp import autocast
-from torch.utils.data import DataLoader
-from tqdm.auto import tqdm
-from PIL import Image
-from multiprocessing import Pool, cpu_count
-from inference.GrandQC_tissue_detection import process_single_slide
-
-from inference.data_utils import (
-    collate_fn,
-    detection_to_annotation_store,
-    imagenet_normalise_torch,
-    slide_nms,
-)
-from model.KongNet import get_KongNet
-from inference.prediction_utils import binary_det_post_process
+from inference.wsi_inference_base import BaseWSIInference
 
 
-NUM_WORKERS = cpu_count() - 2 if cpu_count() > 2 else 1
-BATCH_SIZE = 64
-print(f"Using {NUM_WORKERS} workers for data processing")
-print(f"Using batch size of {BATCH_SIZE} for inference")
-
-PATCH_SIZE=256
-STRIDE=240
-RESOLUTION=0.25
-UNITS='mpp'
-N_CLASSES=5
-TARGET_CHANNELS=[5, 8, 11, 14, 17] # Which output channels to use
-CELL_CHANNEL_MAP = {
-    "neoplastic": 0,
-    "inflammatory": 1,
-    "connective": 2,
-    "dead": 3,
-    "epithelial": 4,
-}
-POST_PROC_SIZE=9
-POST_PROC_THRESHOLD=0.5
-
-def detection_in_wsi(
-    wsi_reader: WSIReader,
-    mask_thumbnail: np.ndarray,
-    models: list[torch.nn.Module],
-    cache_dir: str = "./cache",
-):
+class PanNukeInference(BaseWSIInference):
+    """PanNuke-specific inference pipeline"""
     
-    start_time = time.time()
-    patch_size = PATCH_SIZE
-    stride = STRIDE
-
-    patch_extractor = SlidingWindowPatchExtractor(
-        input_img=wsi_reader,
-        input_mask=mask_thumbnail,
-        patch_size=(patch_size, patch_size),
-        stride=(stride, stride),
-        resolution=RESOLUTION,
-        units=UNITS,
-        min_mask_ratio=0.3,
-    )
-
-    batch_size = BATCH_SIZE
-
-    dataloader = DataLoader(
-        patch_extractor,
-        batch_size=batch_size,
-        shuffle=False,
-        collate_fn=collate_fn,
-        num_workers=NUM_WORKERS,
-        pin_memory=True,
-    )
-
-    n_tiles = len(dataloader.dataset)
-    n_classes = N_CLASSES
-    tile_size = PATCH_SIZE
-
-    os.makedirs(cache_dir, exist_ok=True)
-
-    z_preds_path = os.path.join(cache_dir, "predictions.zarr")
-    z_coords_path = os.path.join(cache_dir, "coords.zarr")
-
-    if os.path.exists(z_preds_path):
-        shutil.rmtree(z_preds_path)
-    if os.path.exists(z_coords_path):
-        shutil.rmtree(z_coords_path)
-
-
-
-    # Safe: use DirectoryStore (not .zip)
-    z_preds = zarr.open(
-        z_preds_path,
-        mode="w",
-        shape=(n_tiles, n_classes, tile_size, tile_size),
-        chunks=(batch_size, n_classes, tile_size, tile_size),
-        dtype="f4",
-        compressor=Blosc(cname="lz4", clevel=3, shuffle=Blosc.SHUFFLE),
-    )
-    z_coords = zarr.open(
-        z_coords_path,
-        mode="w",
-        shape=(n_tiles, 4),
-        chunks=(batch_size, 4),
-        dtype="i4",
-        compressor=Blosc(cname="lz4", clevel=3, shuffle=Blosc.SHUFFLE),
-    )
-
-    def dump_results(data, z_preds, z_coords):
-        pred_np, coords_np, idx = data
-        B = pred_np.shape[0]
-        z_preds[idx:idx + B, :, :] = pred_np
-        z_coords[idx:idx + B] = coords_np
-        return
-
-    futures = []
-    start_idx = 0
-
-    with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
-        for imgs in tqdm(dataloader, desc="Predicting patches", total=len(dataloader)):
-            batch_size_actual = imgs.shape[0]  # In case last batch is smaller
-            imgs = torch.permute(imgs, (0, 3, 1, 2)).to("cuda").float() / 255
-            imgs = imagenet_normalise_torch(imgs)
-
-            # Preallocate probability maps
-            prob_tensors = [torch.zeros((batch_size_actual, 1, patch_size, patch_size), device="cuda") for _ in range(n_classes)]
-
-            with torch.no_grad():
-                for model in models:
-                    with autocast(device_type="cuda"):
-                        logits = model(imgs)
-                        probs = torch.sigmoid(logits)
-
-                    # Collect channel indices
-                    selected_channels = TARGET_CHANNELS
-                    for i, c in enumerate(selected_channels):
-                        prob_tensors[i] += probs[:, c:c+1, :, :]
-
-            predictions = torch.cat(
-                [p / len(models) for p in prob_tensors],
-                dim=1
-            ).cpu().numpy()
-
-            coords = np.array(patch_extractor.coordinate_list[start_idx:start_idx + batch_size_actual])
-
-            futures.append(
-                executor.submit(
-                    dump_results,
-                    (predictions, coords, start_idx),
-                    z_preds,
-                    z_coords
-                )
-            )
-            start_idx += batch_size_actual
-
-        # Wait for threads and raise errors if any
-        for future in concurrent.futures.as_completed(futures):
-            future.result()  # This will raise any exceptions that occurred in the threads
-
-    end_time = time.time()
-    print("Predictions saved to Zarr format.")
-    print(f"Inference time: {end_time - start_time:.2f} seconds")
-
-
-def process_one_chunk_all_channels(pred_chunk, coord_chunk, threshold, min_distance, cell_channel_map):
-    result = {f"{k}_points": [] for k in cell_channel_map}
-
-    for cell_type, ch_idx in cell_channel_map.items():
-        for j in range(pred_chunk.shape[0]):
-            probs_map_patch = pred_chunk[j, ch_idx, :, :]
-            x_start, y_start, x_end, y_end = coord_chunk[j]
-
-            processed_mask = binary_det_post_process(
-                probs_map_patch,
-                threshold=threshold,
-                min_distance=min_distance,
-            )
-
-            prob_map_labels = skimage.measure.label(processed_mask)
-            prob_map_stats = skimage.measure.regionprops(
-                prob_map_labels, intensity_image=probs_map_patch
-            )
-
-            for region in prob_map_stats:
-                centroid = region["centroid"]
-
-                c, r, confidence = (
-                    centroid[1],
-                    centroid[0],
-                    region["mean_intensity"],
-                )
-                c1 = c + x_start
-                r1 = r + y_start
-
-                prediction_record = {
-                    "x": c1,
-                    "y": r1,
-                    "type": cell_type,
-                    "prob": float(confidence),
-                }
-
-                result[f"{cell_type}_points"].append(
-                    prediction_record
-                )
-    return result
-
-def process_detection_masks_chunked_mp_streamed(
-    predictions,
-    coordinate_list,
-    threshold=0.5,
-    min_distance=9,
-    batch_size=BATCH_SIZE,
-    num_workers=NUM_WORKERS,
-):
-    cell_channel_map = CELL_CHANNEL_MAP
-
-    N = predictions.shape[0]
-    final_results = {f"{k}_points": [] for k in cell_channel_map}
-
-    with Pool(processes=num_workers) as pool:
-        futures = []
-        for i in range(0, N, batch_size):
-            pred_chunk = predictions[i:i + batch_size, :, :, :]  # (B, C, H, W)
-            coord_chunk = coordinate_list[i:i + batch_size]
-
-            # Must convert to NumPy in parent, because Zarr slices are lazy
-            args = (
-                np.array(pred_chunk),  # eagerly read into memory
-                np.array(coord_chunk),
-                threshold,
-                min_distance,
-                cell_channel_map,
-            )
-            futures.append(pool.apply_async(process_one_chunk_all_channels, args))
-
-        for f in tqdm(futures, desc="Processing chunks"):
-            result = f.get()
-            for key, val in result.items():
-                final_results[key].extend(val)
-
-    return final_results
-
-
-def post_process(
-    wsi_reader: WSIReader,
-    mask_thumbnail: np.ndarray,
-    cache_dir: str = "./cache",
-):
-    """
-    Post process the detection results
-    Args:
-        wsi: WSIReader object
-        cache_dir: directory to save the post processed results
-    Returns:
-        None
-    """
-    z_preds_path = os.path.join(cache_dir, "predictions.zarr")
-    z_coords_path = os.path.join(cache_dir, "coords.zarr")
-
-    z_preds = zarr.open(z_preds_path, mode="r")
-    z_coords = zarr.open(z_coords_path, mode="r")
-
-    print(f"{z_preds.shape}")
-    print(f"{z_coords.shape}")
+    def __init__(self):
+        super().__init__()
+        # PanNuke-specific configuration
+        self.patch_size = 256
+        self.stride = 240
+        self.resolution = 0.25
+        self.units = 'mpp'
+        self.post_proc_size = 11
+        self.post_proc_threshold = 0.5
     
-    start_time = time.time()
-    cell_type_points = process_detection_masks_chunked_mp_streamed(
-        predictions=z_preds,
-        coordinate_list=z_coords,
-        threshold=POST_PROC_THRESHOLD,
-        min_distance=POST_PROC_SIZE,
-        batch_size=BATCH_SIZE,
-        num_workers=NUM_WORKERS,
-    )
-    end_time = time.time()
-    print(f"Detection processing time: {end_time - start_time:.2f} seconds")
+    def get_model_config(self):
+        """Return PanNuke model configuration"""
+        return {
+            "num_heads": 6,
+            "decoders_out_channels": [3, 3, 3, 3, 3, 3]
+        }
+    
+    def get_target_channels(self):
+        """Return PanNuke target channels"""
+        return [5, 8, 11, 14, 17]
+    
+    def get_cell_channel_map(self):
+        """Return PanNuke cell channel mapping"""
+        return {
+            "neoplastic": 0,
+            "inflammatory": 1,
+            "connective": 2,
+            "dead": 3,
+            "epithelial": 4,
+        }
+    
+    def get_output_suffix(self):
+        """Return PanNuke output suffix"""
+        return "_pannuke"
 
-    all_records = []
-    all_records.extend(cell_type_points["neoplastic_points"])
-    all_records.extend(cell_type_points["inflammatory_points"])
-    all_records.extend(cell_type_points["connective_points"])
-    all_records.extend(cell_type_points["dead_points"])
-    all_records.extend(cell_type_points["epithelial_points"])
 
-    print(f"Total {len(all_records)} cell records detected")
-
-    start_time = time.time()
-    final_records = slide_nms(
-        wsi_reader=wsi_reader,
-        binary_mask=mask_thumbnail,
-        detection_record=all_records,
-        detection_mpp=RESOLUTION,
-        tile_size=4096,
-        box_size=POST_PROC_SIZE,
-        overlap_thresh=POST_PROC_THRESHOLD,
-        cache_dir=cache_dir,
-        num_workers=NUM_WORKERS,
-    )
-    end_time = time.time()
-    print(f"After NMS, {len(final_records)} cell records remain")
-    print(f"NMS time: {end_time - start_time:.2f} seconds")
-
-    return {
-        "cell_records": final_records,
-    }
-
+# Create global instance and expose start function for backward compatibility
+_pannuke_inference = PanNukeInference()
 
 def start(
     wsi_path: str,
-    det_models: list[torch.nn.Module],
+    det_models: list,
     mask_path: str | None,
     save_dir: str | None,
     cache_dir: str = "./cache",
+    num_workers: int = 10,
+    batch_size: int = 64,
 ):
-    if save_dir is None:
-        save_dir = os.path.dirname(wsi_path)
-        print(f"save_dir is None, set to {save_dir}")
-    else:
-        os.makedirs(save_dir, exist_ok=True)
-
-    wsi_name_without_ext = os.path.splitext(os.path.basename(wsi_path))[0]
-
-    store_save_path = os.path.join(save_dir, f"{wsi_name_without_ext}_pannuke.db")
-    if os.path.exists(store_save_path):
-        print(f"Annotation store {store_save_path} already exists, skipping detection")
-        return
-
-
-    cache_dir = os.path.join(cache_dir, wsi_name_without_ext)
-    os.makedirs(cache_dir, exist_ok=True)
-
-
-    wsi_reader = WSIReader.open(wsi_path)
-    if mask_path is None:
-        grandQC_weights_path = "/media/u1910100/data/GrandQC_Tissue_Detection_MPP10.pth"
-        tissue_mask = process_single_slide(wsi_path, grandQC_weights_path)
-        mask_filename = f"{wsi_name_without_ext}_MASK.png"
-        mask_path = os.path.join(save_dir, mask_filename)
-        Image.fromarray(tissue_mask).save(mask_path)
-    else:
-        tissue_mask = VirtualWSIReader.open(mask_path)
-        tissue_mask = tissue_mask.slide_thumbnail(resolution=0, units="level")
-    
-    tissue_mask = np.where(tissue_mask >= 1, 1, 0).astype(np.uint8)
-    if tissue_mask.sum() == 0:
-        print("Tissue mask is empty, skipping this WSI")
-        return
-
-
-    detection_in_wsi(
-        wsi_reader=WSIReader.open(wsi_path),
-        mask_thumbnail=tissue_mask,
-        models=det_models,
+    """PanNuke inference entry point"""
+    return _pannuke_inference.start(
+        wsi_path=wsi_path,
+        det_models=det_models,
+        mask_path=mask_path,
+        save_dir=save_dir,
         cache_dir=cache_dir,
+        num_workers=num_workers,
+        batch_size=batch_size,
     )
-
-    # return
-
-    print("Starting post processing...")
-
-    start_time = time.time()
-    detection_records = post_process(
-        wsi_reader=WSIReader.open(wsi_path),
-        mask_thumbnail=tissue_mask,
-        cache_dir=cache_dir,
-    )
-    end_time = time.time()
-    print(f"Post processing completed in {end_time - start_time:.2f} seconds")
-
-
-    print("Saving results...")
-
-    start_time = time.time()
-    wsi_reader = WSIReader.open(wsi_path)
-    print(wsi_reader.info.as_dict())
-    base_mpp = wsi_reader.convert_resolution_units(input_res=0, input_unit='level', output_unit='mpp')[0]
-    scale_factor = RESOLUTION / base_mpp
-    annotation_store = detection_to_annotation_store(
-        detection_records["cell_records"], scale_factor=scale_factor, shape_type="point"
-    )
-    annotation_store.dump(store_save_path)
-
-    end_time = time.time()
-    print(f"Detection results saved to {save_dir}")
-    print(f"Saving time: {end_time - start_time:.2f} seconds")
-
-    # # Clean up cache directory
-    if os.path.exists(cache_dir):
-        shutil.rmtree(cache_dir)
-        print(f"Cache directory {cache_dir} removed")
-
-    print(f"{len(detection_records['cell_records'])} cell detected")
-
-    return
