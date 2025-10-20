@@ -123,19 +123,18 @@ class TestPanNukeInference(unittest.TestCase):
     def test_target_channels(self):
         """Test PanNuke target channels"""
         channels = self.inference.get_target_channels()
-        expected = [2, 5, 8, 11, 14, 17]
+        expected = [5, 8, 11, 14, 17]
         self.assertEqual(channels, expected)
 
     def test_cell_channel_map(self):
         """Test PanNuke cell channel mapping"""
         mapping = self.inference.get_cell_channel_map()
         expected = {
-            "overall": 0,
-            "neoplastic": 1,
-            "inflammatory": 2,
-            "connective": 3,
-            "dead": 4,
-            "epithelial": 5,
+            "neoplastic": 0,
+            "inflammatory": 1,
+            "connective": 2,
+            "dead": 3,
+            "epithelial": 4,
         }
         self.assertEqual(mapping, expected)
 
