@@ -24,7 +24,7 @@ class PanNukeInference(BaseWSIInference):
     
     def get_target_channels(self):
         """Return PanNuke target channels"""
-        return [3, 5, 8, 11, 14, 17]
+        return [2, 5, 8, 11, 14, 17]
     
     def get_cell_channel_map(self):
         """Return PanNuke cell channel mapping"""

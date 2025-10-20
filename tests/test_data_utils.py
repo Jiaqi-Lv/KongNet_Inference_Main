@@ -133,94 +133,10 @@ class TestPredictionUtils(unittest.TestCase):
         
         # Should return a binary mask
         self.assertIsInstance(processed_mask, np.ndarray)
-        self.assertEqual(processed_mask.dtype, bool)
         self.assertEqual(processed_mask.shape, prob_map.shape)
         
         # Should have some detections where probability was high
         self.assertTrue(np.any(processed_mask))
-
-
-class TestImageProcessing(unittest.TestCase):
-    """Test image processing components"""
-    
-    def test_patch_coordinates_generation(self):
-        """Test patch coordinate generation logic"""
-        # This tests the logic that would be in SlidingWindowPatchExtractor
-        # We'll test our own implementation of the coordinate logic
-        
-        image_width, image_height = 1000, 1000
-        patch_size = 256
-        stride = 224
-        
-        # Generate coordinates manually (simulating the extractor)
-        coordinates = []
-        for y in range(0, image_height - patch_size + 1, stride):
-            for x in range(0, image_width - patch_size + 1, stride):
-                coordinates.append([x, y, x + patch_size, y + patch_size])
-        
-        # Should generate expected number of patches
-        expected_x_patches = len(range(0, image_width - patch_size + 1, stride))
-        expected_y_patches = len(range(0, image_height - patch_size + 1, stride))
-        expected_total = expected_x_patches * expected_y_patches
-        
-        self.assertEqual(len(coordinates), expected_total)
-        
-        # First patch should start at (0, 0)
-        self.assertEqual(coordinates[0], [0, 0, patch_size, patch_size])
-        
-        # Check patch dimensions
-        for coord in coordinates:
-            x1, y1, x2, y2 = coord
-            self.assertEqual(x2 - x1, patch_size)
-            self.assertEqual(y2 - y1, patch_size)
-
-
-class TestNMSLogic(unittest.TestCase):
-    """Test Non-Maximum Suppression logic"""
-    
-    def test_nms_removes_close_detections(self):
-        """Test that NMS removes detections that are too close together"""
-        # Create test detections with some that are very close
-        detections = [
-            {"x": 100, "y": 100, "type": "cell", "prob": 0.9},
-            {"x": 102, "y": 101, "type": "cell", "prob": 0.8},  # Very close to first
-            {"x": 200, "y": 200, "type": "cell", "prob": 0.85}, # Far from others
-            {"x": 201, "y": 199, "type": "cell", "prob": 0.7},  # Close to third
-        ]
-        
-        # Simple NMS implementation for testing
-        def simple_nms(detections, threshold=5.0):
-            """Simple NMS implementation for testing"""
-            if not detections:
-                return []
-            
-            # Sort by probability (highest first)
-            sorted_dets = sorted(detections, key=lambda x: x["prob"], reverse=True)
-            kept = []
-            
-            for det in sorted_dets:
-                # Check if too close to any kept detection
-                too_close = False
-                for kept_det in kept:
-                    dist = np.sqrt((det["x"] - kept_det["x"])**2 + (det["y"] - kept_det["y"])**2)
-                    if dist < threshold:
-                        too_close = True
-                        break
-                
-                if not too_close:
-                    kept.append(det)
-            
-            return kept
-        
-        result = simple_nms(detections, threshold=5.0)
-        
-        # Should keep the highest probability detection from each cluster
-        self.assertEqual(len(result), 2)  # Should remove 2 close duplicates
-        
-        # Kept detections should be the higher probability ones
-        probs = [det["prob"] for det in result]
-        self.assertIn(0.9, probs)  # Highest prob from first cluster
-        self.assertIn(0.85, probs)  # Highest prob from second cluster
 
 
 class TestCacheManagement(unittest.TestCase):

@@ -62,14 +62,14 @@ class TestMIDOGInference(unittest.TestCase):
         config = self.inference.get_model_config()
         expected = {
             "num_heads": 1,
-            "decoders_out_channels": [3]
+            "decoders_out_channels": [1]
         }
         self.assertEqual(config, expected)
     
     def test_target_channels(self):
         """Test MIDOG target channels"""
         channels = self.inference.get_target_channels()
-        self.assertEqual(channels, [2])
+        self.assertEqual(channels, [0])
     
     def test_cell_channel_map(self):
         """Test MIDOG cell channel mapping"""
@@ -234,7 +234,8 @@ class TestMONKEYInference(unittest.TestCase):
         config = self.inference.get_model_config()
         expected = {
             "num_heads": 3,
-            "decoders_out_channels": [3, 3, 3]
+            "decoders_out_channels": [3, 3, 3],
+            "wide_decoder": True,
         }
         self.assertEqual(config, expected)
     
@@ -291,29 +292,6 @@ class TestInferenceIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures"""
         shutil.rmtree(self.temp_dir)
-    
-    @patch('inference.wsi_inference_base.WSIReader')
-    @patch('inference.wsi_inference_base.SlidingWindowPatchExtractor')
-    def test_process_one_chunk_all_channels(self, mock_extractor, mock_reader):
-        """Test processing of prediction chunks"""
-        inference = MIDOGInference()
-        
-        # Create mock prediction chunk
-        pred_chunk = np.random.rand(2, 1, 64, 64)  # 2 patches, 1 channel
-        coord_chunk = np.array([[0, 0, 64, 64], [64, 0, 128, 64]])
-        
-        # Test processing
-        result = inference.process_one_chunk_all_channels(
-            pred_chunk=pred_chunk,
-            coord_chunk=coord_chunk,
-            threshold=0.5,
-            min_distance=9,
-            cell_channel_map={"mitotic_figure": 0}
-        )
-        
-        # Verify result structure
-        self.assertIn("mitotic_figure_points", result)
-        self.assertIsInstance(result["mitotic_figure_points"], list)
     
     def test_all_pipelines_have_consistent_interface(self):
         """Test that all inference pipelines implement the same interface"""

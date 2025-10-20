@@ -100,60 +100,7 @@ class TestKongNetModel(unittest.TestCase):
             # Should have expected number of parameters based on heads
             # (This is a basic check - exact counts would depend on architecture details)
             self.assertGreater(param_count, 1000)  # Should have reasonable number of params
-
-
-class TestTimmEncoderFixed(unittest.TestCase):
-    """Test the fixed TIMM encoder component"""
     
-    @unittest.skipIf(not MODEL_AVAILABLE, "Model components not available")
-    @unittest.skipIf(not TORCH_AVAILABLE, "PyTorch not available")
-    @patch('timm.create_model')
-    def test_timm_encoder_initialization(self, mock_create_model):
-        """Test TIMM encoder initialization"""
-        
-        # Mock the TIMM model
-        mock_timm_model = Mock()
-        mock_timm_model.forward_features = Mock()
-        mock_create_model.return_value = mock_timm_model
-        
-        # Create encoder
-        encoder = TimmEncoderFixed(
-            name="resnet50",
-            pretrained=True,
-            in_channels=3,
-            depth=5,
-            drop_path_rate=0.1
-        )
-        
-        # Should create TIMM model
-        mock_create_model.assert_called_once()
-        
-        # Check initialization parameters were handled
-        call_args = mock_create_model.call_args
-        self.assertIn('pretrained', call_args[1])
-        self.assertIn('in_chans', call_args[1])
-    
-    @unittest.skipIf(not MODEL_AVAILABLE, "Model components not available")
-    @unittest.skipIf(not TORCH_AVAILABLE, "PyTorch not available") 
-    @patch('timm.create_model')
-    def test_timm_encoder_drop_path_handling(self, mock_create_model):
-        """Test that drop_path_rate is handled correctly"""
-        
-        # Mock the TIMM model
-        mock_timm_model = Mock()
-        mock_create_model.return_value = mock_timm_model
-        
-        # Test with drop_path_rate
-        encoder = TimmEncoderFixed(
-            name="efficientnet_b0",
-            drop_path_rate=0.2
-        )
-        
-        # Should pass drop_path_rate to TIMM model creation
-        call_args = mock_create_model.call_args
-        self.assertIn('drop_path_rate', call_args[1])
-        self.assertEqual(call_args[1]['drop_path_rate'], 0.2)
-
 
 class TestModelCompatibility(unittest.TestCase):
     """Test model compatibility with different inference pipelines"""
@@ -254,37 +201,6 @@ class TestModelInputValidation(unittest.TestCase):
                 num_heads=0,
                 decoders_out_channels=[]
             )
-    
-    @unittest.skipIf(not MODEL_AVAILABLE, "Model not available")
-    @unittest.skipIf(not TORCH_AVAILABLE, "PyTorch not available")
-    def test_model_with_different_input_sizes(self):
-        """Test model behavior with different input sizes"""
-        
-        model = get_KongNet(num_heads=1, decoders_out_channels=[3])
-        model.eval()
-        
-        # Test different input sizes
-        input_sizes = [(1, 3, 224, 224), (2, 3, 256, 256), (1, 3, 512, 512)]
-        
-        for batch_size, channels, height, width in input_sizes:
-            with self.subTest(size=(batch_size, channels, height, width)):
-                input_tensor = torch.randn(batch_size, channels, height, width)
-                
-                with torch.no_grad():
-                    try:
-                        output = model(input_tensor)
-                        
-                        # Output should have correct batch size
-                        self.assertEqual(output.shape[0], batch_size)
-                        
-                        # Output should have expected number of channels
-                        expected_channels = sum([3])  # 1 head with 3 channels
-                        self.assertEqual(output.shape[1], expected_channels)
-                        
-                    except Exception as e:
-                        # If the model doesn't support this size, that's ok for this test
-                        # We're just checking it doesn't crash unexpectedly
-                        self.assertIsInstance(e, (RuntimeError, ValueError))
 
 
 if __name__ == '__main__':

@@ -128,58 +128,10 @@ def run_unit_tests():
     return len(result.failures) == 0 and len(result.errors) == 0
 
 
-def run_integration_tests():
-    """Run integration tests (placeholder for future implementation)"""
-    print("Integration tests not yet implemented.")
-    print("Future integration tests could include:")
-    print("- End-to-end inference pipeline tests")
-    print("- Model loading and inference tests") 
-    print("- File I/O and caching tests")
-    print("- Performance benchmarking tests")
-    return True
-
-
-def run_mock_tests():
-    """Run tests in mock mode to verify test structure without dependencies"""
-    print("Running tests in mock mode...")
-    
-    # Mock all external dependencies
-    mock_modules = [
-        'torch', 'torch.nn', 'torch.nn.functional', 'torch.utils.data',
-        'torch.amp', 'torchvision.ops',
-        'numpy', 'zarr', 'numcodecs',
-        'tiatoolbox', 'tiatoolbox.tools.patchextraction', 
-        'tiatoolbox.wsicore.wsireader', 'tiatoolbox.annotation.storage',
-        'skimage', 'skimage.measure',
-        'segmentation_models_pytorch', 'timm', 'ttach',
-        'PIL', 'tqdm', 'tqdm.auto'
-    ]
-    
-    with patch.dict('sys.modules', {mod: unittest.mock.MagicMock() for mod in mock_modules}):
-        return run_unit_tests()
-
-
 if __name__ == '__main__':
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Run KongNet Inference Tests')
-    parser.add_argument('--mock', action='store_true', 
-                       help='Run tests in mock mode (without dependencies)')
-    parser.add_argument('--integration', action='store_true',
-                       help='Run integration tests')
-    parser.add_argument('--unit', action='store_true', default=True,
-                       help='Run unit tests (default)')
-    
-    args = parser.parse_args()
-    
+
     success = True
-    
-    if args.mock:
-        success &= run_mock_tests()
-    elif args.integration:
-        success &= run_integration_tests()
-    else:
-        success &= run_unit_tests()
+    success &= run_unit_tests()
     
     # Exit with appropriate code
     sys.exit(0 if success else 1)

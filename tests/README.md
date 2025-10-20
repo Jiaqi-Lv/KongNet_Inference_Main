@@ -13,7 +13,7 @@ This directory contains the test suite for the KongNet Inference Main project.
 
 ## Running Tests
 
-### Option 1: Using pytest (Recommended)
+### Option 1: Using pytest
 
 ```bash
 # Install test dependencies
@@ -27,57 +27,15 @@ pytest tests/test_inference_pipelines.py
 
 # Run tests with verbose output
 pytest -v
-
-# Run only fast tests (exclude slow/integration tests)
-pytest -m "not slow"
-
-# Run tests that don't require heavy dependencies
-pytest -m "not requires_torch"
 ```
 
-### Option 2: Using the custom test runner
+### Option 2: Using python
 
 ```bash
-# Run unit tests with dependency checking
 python tests/run_tests.py
-
-# Run tests in mock mode (without dependencies)
-python tests/run_tests.py --mock
-
-# Run integration tests (when implemented)
-python tests/run_tests.py --integration
 ```
 
-### Option 3: Using unittest directly
 
-```bash
-# Run all tests
-python -m unittest discover tests
-
-# Run specific test file
-python -m unittest tests.test_inference_pipelines
-
-# Run specific test class
-python -m unittest tests.test_inference_pipelines.TestMIDOGInference
-```
-
-## Test Categories
-
-### Unit Tests
-- **Pipeline Tests**: Test individual inference pipeline classes
-- **Interface Tests**: Test command-line argument handling and workflow
-- **Model Tests**: Test model architecture and configuration
-- **Utility Tests**: Test data processing and helper functions
-
-### Integration Tests (Future)
-- End-to-end inference pipeline tests
-- Model loading and inference tests
-- File I/O and caching tests
-- Performance benchmarking
-
-## Dependencies
-
-The tests are designed to handle missing dependencies gracefully:
 
 ### Required for Basic Tests
 - Python 3.10+
@@ -86,20 +44,6 @@ The tests are designed to handle missing dependencies gracefully:
 ### Optional Dependencies
 - `pytest` - For advanced test features
 - `pytest-mock` - For enhanced mocking capabilities
-- `torch` - Required for model and tensor tests
-- `numpy` - Required for array processing tests
-- `tiatoolbox` - Required for WSI processing tests
-
-### Test Dependencies
-Tests will automatically skip if required dependencies are not available.
-
-## Test Design Principles
-
-1. **Graceful Degradation**: Tests skip when dependencies are missing rather than failing
-2. **Mocking**: Heavy dependencies are mocked to test logic without requiring full installation
-3. **Isolation**: Each test is independent and doesn't rely on external files or state
-4. **Comprehensive Coverage**: Tests cover configuration, initialization, processing logic, and error handling
-5. **Fast Execution**: Most tests run quickly; slow tests are marked appropriately
 
 ## Example Test Run
 
@@ -130,38 +74,3 @@ Failures: 0
 Errors: 0
 Skipped: 3
 ```
-
-## Adding New Tests
-
-When adding new functionality, please add corresponding tests:
-
-1. **New Pipeline**: Add test class in `test_inference_pipelines.py`
-2. **New Utility Function**: Add tests in `test_data_utils.py`
-3. **New CLI Feature**: Add tests in `test_interface.py`
-4. **New Model Component**: Add tests in `test_model.py`
-
-### Test Template
-
-```python
-class TestNewFeature(unittest.TestCase):
-    """Test description"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        pass
-    
-    def tearDown(self):
-        """Clean up after tests"""
-        pass
-    
-    def test_feature_functionality(self):
-        """Test specific functionality"""
-        # Arrange
-        # Act  
-        # Assert
-        pass
-```
-
-## Continuous Integration
-
-These tests are designed to work in CI environments where dependencies may be limited. The graceful dependency handling ensures tests can run in various environments while providing maximum coverage when all dependencies are available.

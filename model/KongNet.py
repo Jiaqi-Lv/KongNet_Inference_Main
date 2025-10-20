@@ -170,6 +170,9 @@ def get_KongNet(
             f"({len(decoders_out_channels)})"
         )
     
+    if num_heads < 1 or len(decoders_out_channels) < 1:
+        raise ValueError("num_heads and decoders_out_channels must be at least 1")
+    
     depth = 5
 
     encoder = get_timm_encoder(
