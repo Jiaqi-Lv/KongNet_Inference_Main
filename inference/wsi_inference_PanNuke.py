@@ -21,18 +21,19 @@ class PanNukeInference(BaseWSIInference):
         return {"num_heads": 6, "decoders_out_channels": [3, 3, 3, 3, 3, 3]}
 
     def get_target_channels(self):
-        """Return PanNuke target channels"""
-        return [2, 5, 8, 11, 14, 17]
+        """
+        Return PanNuke target channels, overall cell detection (channel 2) is ignored here.
+        """
+        return [5, 8, 11, 14, 17]
 
     def get_cell_channel_map(self):
         """Return PanNuke cell channel mapping"""
         return {
-            "overall": 0,
-            "neoplastic": 1,
-            "inflammatory": 2,
-            "connective": 3,
-            "dead": 4,
-            "epithelial": 5,
+            "neoplastic": 0,
+            "inflammatory": 1,
+            "connective": 2,
+            "dead": 3,
+            "epithelial": 4,
         }
 
     def get_output_suffix(self):

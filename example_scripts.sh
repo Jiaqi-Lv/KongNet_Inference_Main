@@ -2,7 +2,7 @@
 #     --input_dir /home/u1910100/Github/KongNet_Inference_Main/test_input \
 #     --output_dir /home/u1910100/Github/KongNet_Inference_Main/test_output \
 
-python3 inference_CoNIC.py \
+python3 inference_PanNuke.py \
     --input_dir /media/u1910100/data/slides \
     --output_dir /media/u1910100/data/overlays \
     --cache_dir /home/u1910100/Documents/cache \
