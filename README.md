@@ -1,6 +1,10 @@
+
+
 # KongNet Inference Main
 
 Whole slide image (WSI) Inference pipeline for KongNet models supporting multiple histopathology datasets including MIDOG, PanNuke, CoNIC and MONKEY.
+<!-- ![Graphical Abstract](docs/graphical_abstract.jpg) -->
+<img src="docs/graphical_abstract.jpg" width="500">
 
 ## 🚀 Features
 
@@ -8,6 +12,8 @@ Whole slide image (WSI) Inference pipeline for KongNet models supporting multipl
 - **Whole Slide Image Processing**: Efficient WSI inference through multiprocessing and caching
 - **Model Ensemble Support**: Support for multiple model checkpoints and ensemble inference
 - **Quality Control**: Tissue detection using GrandQC
+
+<img src="docs/example_zoomed_in.png" width="200">
 
 ## 📋 Requirements
 
