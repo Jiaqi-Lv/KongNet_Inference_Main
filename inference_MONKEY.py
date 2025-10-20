@@ -1,7 +1,8 @@
-from inference.wsi_inference_MONKEY import MONKEYInference
-from inference.base_inference_interface import BaseInferenceInterface
-
 import logging
+
+from inference.base_inference_interface import BaseInferenceInterface
+from inference.wsi_inference_MONKEY import MONKEYInference
+
 logger = logging.getLogger()
 logger.disabled = True
 
@@ -12,7 +13,7 @@ def main():
         inference_class=MONKEYInference,
         pipeline_name="MONKEY",
         default_hf_repo="TIACentre/KongNet_pretrained_weights",
-        default_checkpoint="KongNet_MONKEY_1.pth"
+        default_checkpoint="KongNet_MONKEY_1.pth",
     )
     interface.main()
 

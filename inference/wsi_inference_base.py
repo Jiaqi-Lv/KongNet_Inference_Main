@@ -1,22 +1,23 @@
 import concurrent.futures
 import os
 import shutil
+import time
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Pool
-import time
-import skimage
+
 import numpy as np
+import skimage
 import torch
 import zarr
 from numcodecs import Blosc
+from PIL import Image
 from tiatoolbox.tools.patchextraction import SlidingWindowPatchExtractor
 from tiatoolbox.wsicore.wsireader import VirtualWSIReader, WSIReader
 from torch.amp import autocast
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-from PIL import Image
-from inference.GrandQC_tissue_detection import process_single_slide
+
 from inference.data_utils import (
     collate_fn,
     detection_to_annotation_store,
@@ -24,59 +25,62 @@ from inference.data_utils import (
     imagenet_normalise_torch,
     slide_nms,
 )
+from inference.GrandQC_tissue_detection import process_single_slide
 from inference.prediction_utils import binary_det_post_process
 
 
 class BaseWSIInference(ABC):
     """Base class for WSI inference pipelines"""
-    
+
     def __init__(self):
         # Default configuration - subclasses should override as needed
         self.patch_size = 256
         self.stride = 240
         self.resolution = 0.25
-        self.units = 'mpp'
+        self.units = "mpp"
         self.post_proc_size = 11
         self.post_proc_threshold = 0.5
         self.target_channels = []
         self.cell_channel_map = {}
         self.output_suffix = "_detection"
-    
+
     @abstractmethod
     def get_model_config(self):
         """Return model configuration (num_heads, decoders_out_channels)"""
         pass
-    
+
     @abstractmethod
     def get_target_channels(self):
         """Return list of target channels to extract from model output"""
         pass
-    
+
     @abstractmethod
     def get_cell_channel_map(self):
         """Return mapping of cell types to channel indices"""
         pass
-    
+
     @abstractmethod
     def get_output_suffix(self):
         """Return suffix for output files"""
         pass
-    
+
     @abstractmethod
-    def process_model_output(self, probs: torch.Tensor, prob_tensors: list, batch_size: int):
+    def process_model_output(
+        self, probs: torch.Tensor, prob_tensors: list, batch_size: int
+    ):
         """Process model output probabilities for target channels (in-place operation)
-        
+
         This method modifies the prob_tensors list in-place by accumulating processed
         probabilities. It does not return anything as the results are stored directly
         in the provided prob_tensors.
-        
+
         Args:
             probs: Model output probabilities [B, C, H, W]
             prob_tensors: List of probability tensors to accumulate results (modified in-place)
             batch_size: Current batch size
         """
         pass
-    
+
     def detection_in_wsi(
         self,
         wsi_reader: WSIReader,
@@ -88,7 +92,7 @@ class BaseWSIInference(ABC):
     ):
         """Run inference on WSI patches"""
         start_time = time.time()
-        
+
         print(f"Using {num_workers} workers for data processing")
         print(f"Using batch size of {batch_size} for inference")
 
@@ -146,22 +150,29 @@ class BaseWSIInference(ABC):
         def dump_results(data, z_preds, z_coords):
             pred_np, coords_np, idx = data
             B = pred_np.shape[0]
-            z_preds[idx:idx + B, :, :] = pred_np
-            z_coords[idx:idx + B] = coords_np
+            z_preds[idx : idx + B, :, :] = pred_np
+            z_coords[idx : idx + B] = coords_np
             return
 
         futures = []
         start_idx = 0
 
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            for imgs in tqdm(dataloader, desc="Predicting patches", total=len(dataloader)):
+            for imgs in tqdm(
+                dataloader, desc="Predicting patches", total=len(dataloader)
+            ):
                 batch_size_actual = imgs.shape[0]
                 imgs = torch.permute(imgs, (0, 3, 1, 2)).to("cuda").float() / 255
                 imgs = imagenet_normalise_torch(imgs)
 
                 # Preallocate probability maps
-                prob_tensors = [torch.zeros((batch_size_actual, 1, self.patch_size, self.patch_size), device="cuda") 
-                              for _ in range(n_classes)]
+                prob_tensors = [
+                    torch.zeros(
+                        (batch_size_actual, 1, self.patch_size, self.patch_size),
+                        device="cuda",
+                    )
+                    for _ in range(n_classes)
+                ]
 
                 with torch.no_grad():
                     for model in models:
@@ -170,21 +181,28 @@ class BaseWSIInference(ABC):
                             probs = torch.sigmoid(logits)
 
                         # Process model output using subclass-specific logic
-                        self.process_model_output(probs, prob_tensors, batch_size_actual) 
+                        self.process_model_output(
+                            probs, prob_tensors, batch_size_actual
+                        )
 
-                predictions = torch.cat(
-                    [p / len(models) for p in prob_tensors],
-                    dim=1
-                ).cpu().numpy()
+                predictions = (
+                    torch.cat([p / len(models) for p in prob_tensors], dim=1)
+                    .cpu()
+                    .numpy()
+                )
 
-                coords = np.array(patch_extractor.coordinate_list[start_idx:start_idx + batch_size_actual])
+                coords = np.array(
+                    patch_extractor.coordinate_list[
+                        start_idx : start_idx + batch_size_actual
+                    ]
+                )
 
                 futures.append(
                     executor.submit(
                         dump_results,
                         (predictions, coords, start_idx),
                         z_preds,
-                        z_coords
+                        z_coords,
                     )
                 )
                 start_idx += batch_size_actual
@@ -197,7 +215,9 @@ class BaseWSIInference(ABC):
         print("Predictions saved to Zarr format.")
         print(f"Inference time: {end_time - start_time:.2f} seconds")
 
-    def process_one_chunk_all_channels(self, pred_chunk, coord_chunk, threshold, min_distance, cell_channel_map):
+    def process_one_chunk_all_channels(
+        self, pred_chunk, coord_chunk, threshold, min_distance, cell_channel_map
+    ):
         """Process one chunk of predictions for all channels"""
         result = {f"{k}_points": [] for k in cell_channel_map}
 
@@ -256,8 +276,8 @@ class BaseWSIInference(ABC):
         with Pool(processes=num_workers) as pool:
             futures = []
             for i in range(0, N, batch_size):
-                pred_chunk = predictions[i:i + batch_size, :, :, :]
-                coord_chunk = coordinate_list[i:i + batch_size]
+                pred_chunk = predictions[i : i + batch_size, :, :, :]
+                coord_chunk = coordinate_list[i : i + batch_size]
 
                 args = (
                     np.array(pred_chunk),
@@ -266,7 +286,9 @@ class BaseWSIInference(ABC):
                     min_distance,
                     cell_channel_map,
                 )
-                futures.append(pool.apply_async(self.process_one_chunk_all_channels, args))
+                futures.append(
+                    pool.apply_async(self.process_one_chunk_all_channels, args)
+                )
 
             for f in tqdm(futures, desc="Processing chunks"):
                 result = f.get()
@@ -292,7 +314,7 @@ class BaseWSIInference(ABC):
 
         print(f"Predictions shape: {z_preds.shape}")
         print(f"Coordinates shape: {z_coords.shape}")
-        
+
         start_time = time.time()
         cell_type_points = self.process_detection_masks_chunked_mp_streamed(
             predictions=z_preds,
@@ -352,26 +374,32 @@ class BaseWSIInference(ABC):
 
         wsi_name_without_ext = os.path.splitext(os.path.basename(wsi_path))[0]
 
-        store_save_path = os.path.join(save_dir, f"{wsi_name_without_ext}{self.get_output_suffix()}.db")
+        store_save_path = os.path.join(
+            save_dir, f"{wsi_name_without_ext}{self.get_output_suffix()}.db"
+        )
         if os.path.exists(store_save_path):
-            print(f"Annotation store {store_save_path} already exists, skipping detection")
+            print(
+                f"Annotation store {store_save_path} already exists, skipping detection"
+            )
             return
 
         cache_dir = os.path.join(cache_dir, wsi_name_without_ext)
         os.makedirs(cache_dir, exist_ok=True)
 
         wsi_reader = WSIReader.open(wsi_path)
-        
+
         # Handle tissue mask
         if mask_path is None:
             hf_repo_id = "TIACentre/GrandQC_Tissue_Detection"
             checkpoint_name = "GrandQC_Tissue_Detection_MPP10.pth"
-            print(f"Downloading GrandQC weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}")
+            print(
+                f"Downloading GrandQC weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}"
+            )
             os.makedirs(weights_dir, exist_ok=True)
             grandQC_weights_path = download_weights_from_hf(
                 checkpoint_name=checkpoint_name,
                 repo_id=hf_repo_id,
-                save_dir=weights_dir
+                save_dir=weights_dir,
             )
             tissue_mask = process_single_slide(wsi_path, grandQC_weights_path)
             mask_filename = f"{wsi_name_without_ext}_MASK.png"
@@ -380,7 +408,7 @@ class BaseWSIInference(ABC):
         else:
             tissue_mask = VirtualWSIReader.open(mask_path)
             tissue_mask = tissue_mask.slide_thumbnail(resolution=0, units="level")
-        
+
         tissue_mask = np.where(tissue_mask >= 1, 1, 0).astype(np.uint8)
         if tissue_mask.sum() == 0:
             print("Tissue mask is empty, skipping this WSI")
@@ -418,10 +446,14 @@ class BaseWSIInference(ABC):
         print("Saving results...")
         start_time = time.time()
         print(wsi_reader.info.as_dict())
-        base_mpp = wsi_reader.convert_resolution_units(input_res=0, input_unit='level', output_unit='mpp')[0]
+        base_mpp = wsi_reader.convert_resolution_units(
+            input_res=0, input_unit="level", output_unit="mpp"
+        )[0]
         scale_factor = self.resolution / base_mpp
         annotation_store = detection_to_annotation_store(
-            detection_records["cell_records"], scale_factor=scale_factor, shape_type="point"
+            detection_records["cell_records"],
+            scale_factor=scale_factor,
+            shape_type="point",
         )
         annotation_store.dump(store_save_path)
 

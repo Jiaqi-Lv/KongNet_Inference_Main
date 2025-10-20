@@ -40,12 +40,8 @@ def multihead_det_post_process(
     if torch.is_tensor(mono_prob):
         mono_prob = mono_prob.detach().cpu().numpy()
 
-    inflamm_output_mask = np.zeros(
-        shape=inflamm_prob.shape, dtype=np.uint8
-    )
-    lymph_output_mask = np.zeros(
-        shape=lymph_prob.shape, dtype=np.uint8
-    )
+    inflamm_output_mask = np.zeros(shape=inflamm_prob.shape, dtype=np.uint8)
+    lymph_output_mask = np.zeros(shape=lymph_prob.shape, dtype=np.uint8)
     mono_output_mask = np.zeros(shape=mono_prob.shape, dtype=np.uint8)
 
     inflamm_coordinates = peak_local_max(
@@ -54,9 +50,7 @@ def multihead_det_post_process(
         threshold_abs=thresholds[0],
         exclude_border=False,
     )
-    inflamm_output_mask[
-        inflamm_coordinates[:, 0], inflamm_coordinates[:, 1]
-    ] = 1
+    inflamm_output_mask[inflamm_coordinates[:, 0], inflamm_coordinates[:, 1]] = 1
 
     lymph_coordinates = peak_local_max(
         lymph_prob,
@@ -64,9 +58,7 @@ def multihead_det_post_process(
         threshold_abs=thresholds[1],
         exclude_border=False,
     )
-    lymph_output_mask[
-        lymph_coordinates[:, 0], lymph_coordinates[:, 1]
-    ] = 1
+    lymph_output_mask[lymph_coordinates[:, 0], lymph_coordinates[:, 1]] = 1
 
     mono_coordinates = peak_local_max(
         mono_prob,
@@ -74,9 +66,7 @@ def multihead_det_post_process(
         threshold_abs=thresholds[2],
         exclude_border=False,
     )
-    mono_output_mask[
-        mono_coordinates[:, 0], mono_coordinates[:, 1]
-    ] = 1
+    mono_output_mask[mono_coordinates[:, 0], mono_coordinates[:, 1]] = 1
 
     return {
         "inflamm_mask": inflamm_output_mask,
@@ -165,13 +155,9 @@ def multihead_seg_post_process(
     if torch.is_tensor(contour_prob):
         contour_prob = contour_prob.detach().cpu().numpy()
 
-    contour_pred_binary = (contour_prob > thresholds[3]).astype(
-        np.uint8
-    )
+    contour_pred_binary = (contour_prob > thresholds[3]).astype(np.uint8)
 
-    overall_pred_binary = (inflamm_prob > thresholds[0]).astype(
-        np.uint8
-    )
+    overall_pred_binary = (inflamm_prob > thresholds[0]).astype(np.uint8)
     lymph_pred_binary = (lymph_prob > thresholds[1]).astype(np.uint8)
     mono_pred_binary = (mono_prob > thresholds[2]).astype(np.uint8)
 
@@ -180,12 +166,8 @@ def multihead_seg_post_process(
     mono_pred_binary[contour_pred_binary > 0] = 0
 
     # Post processing
-    overall_pred_binary = morphological_post_processing(
-        overall_pred_binary
-    )
-    lymph_pred_binary = morphological_post_processing(
-        lymph_pred_binary
-    )
+    overall_pred_binary = morphological_post_processing(overall_pred_binary)
+    lymph_pred_binary = morphological_post_processing(lymph_pred_binary)
     mono_pred_binary = morphological_post_processing(mono_pred_binary)
 
     processed_masks = {
@@ -217,27 +199,19 @@ def multihead_seg_post_process_v2(
     if torch.is_tensor(mono_prob):
         mono_prob = mono_prob.detach().cpu().numpy()
     if torch.is_tensor(inflamm_contour_prob):
-        inflamm_contour_prob = (
-            inflamm_contour_prob.detach().cpu().numpy()
-        )
+        inflamm_contour_prob = inflamm_contour_prob.detach().cpu().numpy()
     if torch.is_tensor(lymph_contour_prob):
         lymph_contour_prob = lymph_contour_prob.detach().cpu().numpy()
     if torch.is_tensor(mono_contour_prob):
         mono_contour_prob = mono_contour_prob.detach().cpu().numpy()
 
-    inflamm_contour_pred_binary = (
-        inflamm_contour_prob > thresholds[3]
-    ).astype(np.uint8)
-    lymph_contour_pred_binary = (
-        lymph_contour_prob > thresholds[3]
-    ).astype(np.uint8)
-    mono_contour_pred_binary = (
-        mono_contour_prob > thresholds[3]
-    ).astype(np.uint8)
-
-    inflamm_pred_binary = (inflamm_prob > thresholds[0]).astype(
+    inflamm_contour_pred_binary = (inflamm_contour_prob > thresholds[3]).astype(
         np.uint8
     )
+    lymph_contour_pred_binary = (lymph_contour_prob > thresholds[3]).astype(np.uint8)
+    mono_contour_pred_binary = (mono_contour_prob > thresholds[3]).astype(np.uint8)
+
+    inflamm_pred_binary = (inflamm_prob > thresholds[0]).astype(np.uint8)
     lymph_pred_binary = (lymph_prob > thresholds[1]).astype(np.uint8)
     mono_pred_binary = (mono_prob > thresholds[2]).astype(np.uint8)
 
@@ -246,12 +220,8 @@ def multihead_seg_post_process_v2(
     mono_pred_binary[mono_contour_pred_binary > 0] = 0
 
     # Post processing
-    inflamm_pred_binary = morphological_post_processing(
-        inflamm_pred_binary
-    )
-    lymph_pred_binary = morphological_post_processing(
-        lymph_pred_binary
-    )
+    inflamm_pred_binary = morphological_post_processing(inflamm_pred_binary)
+    lymph_pred_binary = morphological_post_processing(lymph_pred_binary)
     mono_pred_binary = morphological_post_processing(mono_pred_binary)
 
     processed_masks = {

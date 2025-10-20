@@ -1,7 +1,8 @@
-from inference.wsi_inference_CoNIC import CoNICInference
-from inference.base_inference_interface import BaseInferenceInterface
-
 import logging
+
+from inference.base_inference_interface import BaseInferenceInterface
+from inference.wsi_inference_CoNIC import CoNICInference
+
 logger = logging.getLogger()
 logger.disabled = True
 
@@ -12,7 +13,7 @@ def main():
         inference_class=CoNICInference,
         pipeline_name="CoNIC",
         default_hf_repo="TIACentre/KongNet_pretrained_weights",
-        default_checkpoint="KongNet_CoNIC_1.pth"
+        default_checkpoint="KongNet_CoNIC_1.pth",
     )
     interface.main()
 

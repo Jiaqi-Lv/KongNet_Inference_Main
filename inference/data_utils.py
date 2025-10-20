@@ -1,27 +1,26 @@
 import json
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from typing import Any, List
 
 import cv2
 import numpy as np
+import pandas as pd
 import scipy.ndimage as ndi
 import torch
-from scipy.spatial import KDTree
+from huggingface_hub import hf_hub_download
 from scipy import ndimage
-from torch.amp import autocast
+from scipy.spatial import KDTree
 from shapely import Point, Polygon
 from skimage.feature import peak_local_max
 from skimage.measure import label
 from tiatoolbox.annotation.storage import Annotation, AnnotationStore, SQLiteStore
 from tiatoolbox.tools.patchextraction import get_patch_extractor
 from tiatoolbox.wsicore.wsireader import WSIReader
+from torch.amp import autocast
 from tqdm import tqdm
-import pandas as pd
-from huggingface_hub import hf_hub_download
-
 
 
 def open_json_file(json_path: str):
@@ -29,12 +28,6 @@ def open_json_file(json_path: str):
     with open(json_path, "r") as f:
         data = json.load(f)
     return data
-
-
-
-
-
-
 
 
 def imagenet_denormalise(img: np.ndarray) -> np.ndarray:
@@ -63,7 +56,6 @@ def imagenet_normalise_torch(img: torch.Tensor) -> torch.Tensor:
     return (img - mean) / std
 
 
-
 def px_to_mm(px: int, mpp: float = 0.24199951445730394):
     """
     Convert pixel coordinate to millimeters
@@ -86,10 +78,10 @@ def write_json_file(location: str, content: Any) -> None:
 
 def collate_fn(batch: List[Any]) -> torch.Tensor:
     """Custom collate function for DataLoader.
-    
+
     Args:
         batch (list): List of data samples
-        
+
     Returns:
         torch.Tensor: Batched tensor data
     """
@@ -124,7 +116,7 @@ def scale_coords(coords: list, scale_factor: float = 1):
     return new_coords
 
 
-def _build_annotation(record:dict, scale_factor:float, shape_type:str) -> Annotation:
+def _build_annotation(record: dict, scale_factor: float, shape_type: str) -> Annotation:
     x = record["x"] * scale_factor
     y = record["y"] * scale_factor
 
@@ -152,10 +144,12 @@ def detection_to_annotation_store(
 
     print("Building annotations from detection records...")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        annotations = list(executor.map(
-            lambda rec: _build_annotation(rec, scale_factor, shape_type),
-            detection_records,
-        ))
+        annotations = list(
+            executor.map(
+                lambda rec: _build_annotation(rec, scale_factor, shape_type),
+                detection_records,
+            )
+        )
     print("Appending annotations to store...")
     annotation_store.append_many(annotations)
     return annotation_store
@@ -168,10 +162,10 @@ def detection_to_csv(
 ):
 
     df = pd.DataFrame(detection_records)
-    df['x'] = df['x'].apply(lambda x: x*scale_factor)
-    df['y'] = df['y'].apply(lambda y: y*scale_factor)
+    df["x"] = df["x"].apply(lambda x: x * scale_factor)
+    df["y"] = df["y"].apply(lambda y: y * scale_factor)
     df.to_csv(csv_path, index=False)
-    
+
     return
 
 
@@ -200,7 +194,11 @@ def filter_detection_with_mask(
     print(f"Scale factor: {scale_factor}")
 
     filtered_records: list[dict] = []
-    for record in tqdm(detection_records,  desc="Filtering detections with mask", total=len(detection_records)):
+    for record in tqdm(
+        detection_records,
+        desc="Filtering detections with mask",
+        total=len(detection_records),
+    ):
         x = record["x"]
         y = record["y"]
         print(record)
@@ -289,9 +287,7 @@ def non_max_suppression_fast(boxes, overlapThresh):
         # delete all indexes from the index list that have
         idxs = np.delete(
             idxs,
-            np.concatenate(
-                ([last], np.where(overlap > overlapThresh)[0])
-            ),
+            np.concatenate(([last], np.where(overlap > overlapThresh)[0])),
         )
     # return only the bounding boxes that were picked using the
     # integer data type
@@ -360,9 +356,7 @@ def nms(boxes: np.ndarray, overlapThresh: float):
         # delete all indexes from the index list that have
         idxs = np.delete(
             idxs,
-            np.concatenate(
-                ([last], np.where(overlap > overlapThresh)[0])
-            ),
+            np.concatenate(([last], np.where(overlap > overlapThresh)[0])),
         )
     # return only the bounding boxes that were picked using the
     # integer data type
@@ -376,9 +370,7 @@ def get_centerpoints(box, dist):
     return (box[0] + dist, box[1] + dist)
 
 
-def get_points_within_box(
-    annotation_store: AnnotationStore, box
-) -> list:
+def get_points_within_box(annotation_store: AnnotationStore, box) -> list:
     query_poly = Polygon.from_bounds(box[0], box[1], box[2], box[3])
     anns = annotation_store.query(geometry=query_poly)
     results = []
@@ -407,12 +399,12 @@ def point_to_box(x, y, size, prob=None):
     if prob == None:
         return np.array([x - size, y - size, x + size, y + size])
     else:
-        return np.array(
-            [x - size, y - size, x + size, y + size, prob]
-        )
-    
+        return np.array([x - size, y - size, x + size, y + size, prob])
 
-def _process_single_tile_nms(bb, annotation_store_path, tile_patch_size, box_size, overlap_thresh):
+
+def _process_single_tile_nms(
+    bb, annotation_store_path, tile_patch_size, box_size, overlap_thresh
+):
     annotation_store = SQLiteStore.open(annotation_store_path)
     x_pos, y_pos = bb[0], bb[1]
     box = [x_pos, y_pos, x_pos + tile_patch_size[0], y_pos + tile_patch_size[1]]
@@ -422,15 +414,16 @@ def _process_single_tile_nms(bb, annotation_store_path, tile_patch_size, box_siz
     if len(patch_points) < 2:
         return patch_points
 
-    boxes = np.array([
-        point_to_box(p["x"], p["y"], box_size, p["prob"]) for p in patch_points
-    ])
+    boxes = np.array(
+        [point_to_box(p["x"], p["y"], box_size, p["prob"]) for p in patch_points]
+    )
     indices = nms(boxes, overlap_thresh)
     return [patch_points[i] for i in indices]
 
 
 # After each patch prediction, do peak detection and nms on the patch.
-# Then 
+# Then
+
 
 def slide_nms(
     wsi_reader: WSIReader,
@@ -440,11 +433,11 @@ def slide_nms(
     tile_size: int = 4007,
     box_size: int = 5,
     overlap_thresh: float = 0.5,
-    cache_dir: str ='./',
+    cache_dir: str = "./",
     num_workers: int = 10,
-) -> list[dict]:  
+) -> list[dict]:
     tile_patch_size = [tile_size + 77, tile_size]
-    tile_extractor = get_patch_extractor(   
+    tile_extractor = get_patch_extractor(
         input_img=wsi_reader,
         input_mask=binary_mask,
         method_name="slidingwindow",
@@ -460,9 +453,7 @@ def slide_nms(
             detection_record, scale_factor=1, shape_type="Point"
         )
 
-
-    annotation_store_path = os.path.join(
-        cache_dir, "temp_store_1.db")
+    annotation_store_path = os.path.join(cache_dir, "temp_store_1.db")
     annotation_store.dump(annotation_store_path)
 
     tile_coords = tile_extractor.coordinate_list
@@ -476,12 +467,14 @@ def slide_nms(
                 annotation_store_path,
                 tile_patch_size,
                 box_size,
-                overlap_thresh
+                overlap_thresh,
             )
             for bb in tile_coords
         ]
 
-        for f in tqdm(as_completed(futures), total=len(futures), desc="Multiprocess NMS stage 1"):
+        for f in tqdm(
+            as_completed(futures), total=len(futures), desc="Multiprocess NMS stage 1"
+        ):
             result = f.result()
             temp_nms_points.extend(result)
 
@@ -493,8 +486,7 @@ def slide_nms(
     annotation_store = detection_to_annotation_store(
         temp_nms_points, scale_factor=1, shape_type="Point"
     )
-    annotation_store_path = os.path.join(
-        cache_dir, "temp_store_2.db")
+    annotation_store_path = os.path.join(cache_dir, "temp_store_2.db")
     annotation_store.dump(annotation_store_path)
 
     tile_patch_size = [tile_size, tile_size + 77]
@@ -517,12 +509,14 @@ def slide_nms(
                 annotation_store_path,
                 tile_patch_size,
                 box_size,
-                overlap_thresh
+                overlap_thresh,
             )
             for bb in tile_coords
         ]
 
-        for f in tqdm(as_completed(futures), total=len(futures), desc="Multiprocess NMS stage 2"):
+        for f in tqdm(
+            as_completed(futures), total=len(futures), desc="Multiprocess NMS stage 2"
+        ):
             result = f.result()
             final_nms_points.extend(result)
 
@@ -533,11 +527,8 @@ def slide_nms(
     return final_nms_points
 
 
-
 def erode_mask(mask, size=3, iterations=1):
-    kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (size, size)
-    )
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
     if mask.ndim == 4:
         for i in range(mask.shape[0]):
             for j in range(mask.shape[1]):
@@ -551,9 +542,7 @@ def erode_mask(mask, size=3, iterations=1):
 
 
 def morphological_post_processing(mask, size=3):
-    kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (size, size)
-    )
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
     if mask.ndim == 4:
         for i in range(mask.shape[0]):
             for j in range(mask.shape[1]):
@@ -569,25 +558,16 @@ def morphological_post_processing(mask, size=3):
     return mask
 
 
-
-
-
 def check_image_mask_shape(wsi_path: str, mask_path: str) -> None:
     """
     Check if the image and mask have the same shape and mpp
     """
     wsi_reader = WSIReader.open(wsi_path)
-    wsi_shape = wsi_reader.slide_dimensions(
-        resolution=0, units="level"
-    )
+    wsi_shape = wsi_reader.slide_dimensions(resolution=0, units="level")
     mask_reader = WSIReader.open(mask_path)
-    mask_shape = mask_reader.slide_dimensions(
-        resolution=0, units="level"
-    )
+    mask_shape = mask_reader.slide_dimensions(resolution=0, units="level")
 
-    if (wsi_shape[0] != mask_shape[0]) or (
-        wsi_shape[1] != mask_shape[1]
-    ):
+    if (wsi_shape[0] != mask_shape[0]) or (wsi_shape[1] != mask_shape[1]):
         message = f"Image and mask have different shapes: {wsi_shape} vs {mask_shape}"
         raise ValueError(message)
 
@@ -602,7 +582,9 @@ def check_image_mask_shape(wsi_path: str, mask_path: str) -> None:
         raise ValueError(message)
 
 
-def download_weights_from_hf(checkpoint_name:str, repo_id:str, save_dir:str, force_download:bool=False) -> str:
+def download_weights_from_hf(
+    checkpoint_name: str, repo_id: str, save_dir: str, force_download: bool = False
+) -> str:
     """
     Download model weights from Hugging Face
     """

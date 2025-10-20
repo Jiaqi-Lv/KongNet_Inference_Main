@@ -1,7 +1,8 @@
-from inference.wsi_inference_PanNuke import PanNukeInference
-from inference.base_inference_interface import BaseInferenceInterface
-
 import logging
+
+from inference.base_inference_interface import BaseInferenceInterface
+from inference.wsi_inference_PanNuke import PanNukeInference
+
 logger = logging.getLogger()
 logger.disabled = True
 
@@ -12,7 +13,7 @@ def main():
         inference_class=PanNukeInference,
         pipeline_name="PanNuke",
         default_hf_repo="TIACentre/KongNet_pretrained_weights",
-        default_checkpoint="KongNet_PanNuke_1.pth"
+        default_checkpoint="KongNet_PanNuke_1.pth",
     )
     interface.main()
 
