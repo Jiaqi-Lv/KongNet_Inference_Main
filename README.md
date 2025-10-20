@@ -54,9 +54,18 @@ python inference_CoNIC.py \
     --cache_dir /tmp/cache
 ```
 
+#### MONKEY
+```bash
+# Specify input and output directories
+python inference_MONKEY.py \
+    --input_dir /data/monkey/wsi \
+    --output_dir /results/monkey \
+    --cache_dir /tmp/cache
+```
+
 ### Advanced Examples
 
-#### MIDOG (Production Setup)
+#### MIDOG
 ```bash
 # Full configuration example with model ensemble
 python inference_MIDOG.py \
@@ -68,7 +77,7 @@ python inference_MIDOG.py \
     --additional_checkpoints "KongNet_Det_MIDOG_2.pth" \
     --mask_dir /data/midog/tissue_masks \
     --batch_size 64 \
-    --num_workers 16
+    --num_workers 10
 ```
 
 #### PanNuke 
@@ -83,7 +92,37 @@ python inference_panNuke.py \
     --additional_checkpoints "KongNet_PanNuke_2.pth" \
     --mask_dir /data/pannuke/tissue_masks \
     --batch_size 64 \
-    --num_workers 16
+    --num_workers 10
+```
+
+#### CoNIC
+```bash
+# Full configuration example
+python inference_CoNIC.py \
+    --input_dir /data/conic/test_set \
+    --output_dir /results/conic_predictions \
+    --cache_dir /fast_ssd/cache \
+    --weights_dir ./pretrained_models \
+    --checkpoint_name "KongNet_CoNIC_1.pth" \
+    --additional_checkpoints "KongNet_CoNIC_2.pth" \
+    --mask_dir /data/conic/tissue_masks \
+    --batch_size 64 \
+    --num_workers 10
+```
+
+#### MONKEY
+```bash
+# Full configuration example with inflammatory cell detection
+python inference_MONKEY.py \
+    --input_dir /data/monkey/test_set \
+    --output_dir /results/monkey_predictions \
+    --cache_dir /fast_ssd/cache \
+    --weights_dir ./pretrained_models \
+    --checkpoint_name "KongNet_MONKEY_1.pth" \
+    --additional_checkpoints "KongNet_MONKEY_2.pth" \
+    --mask_dir /data/monkey/tissue_masks \
+    --batch_size 64 \
+    --num_workers 10
 ```
 
 ## 🔧 Command Line Arguments
@@ -97,10 +136,11 @@ python inference_panNuke.py \
 ### Model Configuration
 - `--hf_repo_id`: HuggingFace repository ID for model weights
   - `"TIACentre/KongNet_pretrained_weights"`
-- `--checkpoint_name`: Model checkpoint filename (For details see HF page)
+- `--checkpoint_name`: Model checkpoint filename (For details see [Hugging Face page](https://huggingface.co/TIACentre/KongNet_pretrained_weights))
   - MIDOG: `"KongNet_Det_MIDOG_1.pth"`
   - PanNuke: `"KongNet_PanNuke_1.pth"`
   - CoNIC: `"KongNet_CoNIC_1.pth"`
+  - MONKEY: `"KongNet_MONKEY_1.pth"`
 - `--additional_checkpoints`: Additional checkpoints for ensemble (space-separated)
 - `--local_weights`: Use local weight files instead of downloading from HuggingFace (space-separated paths)
 
@@ -125,6 +165,7 @@ All pipelines output results in **SQLite annotation store format** (`.db` files)
 - **MIDOG**: `{wsi_name}_mitosis.db` - Mitotic figure detection points
 - **PanNuke**: `{wsi_name}_pannuke.db` - Multi-class cell detection points  
 - **CoNIC**: `{wsi_name}_conic.db` - 6-class cell detection points
+- **MONKEY**: `{wsi_name}_monkey.db` - Inflammatory cell detection points
 
 ### Example Python Script for Loading Results
 ```python
@@ -147,7 +188,7 @@ for annotation in annotations:
 - **mitotic_figure**: Mitotic figure detection points
 
 #### PanNuke  
-- **overall**: All cell nuclei
+- **overall**: All cells
 - **neoplastic**: Neoplastic cells
 - **inflammatory**: Inflammatory cells
 - **connective**: Connective tissue cells
@@ -155,12 +196,20 @@ for annotation in annotations:
 - **epithelial**: Epithelial cells
 
 #### CoNIC
-- **neutrophil**: Neutrophil cells
+- **neutrophil**: Neutrophils
 - **epithelial**: Epithelial cells  
-- **lymphocyte**: Lymphocyte cells
+- **lymphocyte**: Lymphocytes
 - **plasma**: Plasma cells
 - **eosinophil**: Eosinophil cells
-- **connective**: Connective tissue cells
+- **connective**: Connective cells
+
+#### MONKEY
+- **overall_inflammatory**: Overall mononuclear leukocytes
+- **lymphocyte**: Lymphocytes 
+- **monocyte**: Monocytes 
+
+## Pretrained Weights
+Pretrained weights can be downloaded from [Hugging Face](https://huggingface.co/TIACentre/KongNet_pretrained_weights)
 
 ## 🐛 Troubleshooting
 

@@ -341,6 +341,7 @@ class BaseWSIInference(ABC):
         cache_dir: str = "./cache",
         num_workers: int = 10,
         batch_size: int = 64,
+        weights_dir: str = "./model_weights",
     ):
         """Main inference pipeline"""
         if save_dir is None:
@@ -365,8 +366,7 @@ class BaseWSIInference(ABC):
         if mask_path is None:
             hf_repo_id = "TIACentre/GrandQC_Tissue_Detection"
             checkpoint_name = "GrandQC_Tissue_Detection_MPP10.pth"
-            weights_dir = "./model_weights"
-            print(f"Downloading weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}")
+            print(f"Downloading GrandQC weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}")
             os.makedirs(weights_dir, exist_ok=True)
             grandQC_weights_path = download_weights_from_hf(
                 checkpoint_name=checkpoint_name,

@@ -43,27 +43,5 @@ class MIDOGInference(BaseWSIInference):
             prob_tensors[i] += probs[:, c:c+1, :, :]
 
 
-# Create global instance and expose start function for backward compatibility
-_midog_inference = MIDOGInference()
-
-def start(
-    wsi_path: str,
-    det_models: list,
-    mask_path: str | None,
-    save_dir: str | None,
-    cache_dir: str = "./cache",
-    num_workers: int = 10,
-    batch_size: int = 32,
-):
-    """MIDOG inference entry point"""
-    return _midog_inference.start(
-        wsi_path=wsi_path,
-        det_models=det_models,
-        mask_path=mask_path,
-        save_dir=save_dir,
-        cache_dir=cache_dir,
-        num_workers=num_workers,
-        batch_size=batch_size,
-    )
 
 

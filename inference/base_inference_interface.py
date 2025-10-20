@@ -7,6 +7,7 @@ import argparse
 from tqdm.auto import tqdm
 from inference.data_utils import download_weights_from_hf
 from model.KongNet import get_KongNet
+from inference.wsi_inference_base import BaseWSIInference
 
 import logging
 logger = logging.getLogger()
@@ -15,8 +16,8 @@ logger.disabled = True
 
 class BaseInferenceInterface:
     """Base class for inference CLI interfaces"""
-    
-    def __init__(self, inference_class, pipeline_name, default_hf_repo, default_checkpoint):
+
+    def __init__(self, inference_class: BaseWSIInference, pipeline_name:str, default_hf_repo:str, default_checkpoint:str):
         self.inference_class = inference_class
         self.pipeline_name = pipeline_name
         self.default_hf_repo = default_hf_repo
@@ -159,6 +160,7 @@ class BaseInferenceInterface:
             model = get_KongNet(
                 num_heads=model_config["num_heads"],
                 decoders_out_channels=model_config["decoders_out_channels"],
+                wide_decoder=model_config.get("wide_decoder", False),
             )
             
             checkpoint = torch.load(weight_path, map_location='cuda')
@@ -258,7 +260,8 @@ class BaseInferenceInterface:
                     save_dir=args.output_dir, 
                     cache_dir=wsi_cache_dir,
                     num_workers=args.num_workers,
-                    batch_size=args.batch_size
+                    batch_size=args.batch_size,
+                    weights_dir=args.weights_dir,
                 )
                 end_time = time.time()
                 
@@ -266,8 +269,7 @@ class BaseInferenceInterface:
                 total_time += processing_time
                 successful_count += 1
                 
-                task_name = "Detection" if self.pipeline_name == "MIDOG" else "Segmentation"
-                print(f"✓ {task_name} completed in {processing_time:.2f} seconds")
+                print(f"Detection completed in {processing_time:.2f} seconds")
                 
                 # Always clean up cache
                 if os.path.exists(wsi_cache_dir):

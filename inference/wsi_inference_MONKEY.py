@@ -18,7 +18,8 @@ class MONKEYInference(BaseWSIInference):
         """Return MONKEY model configuration"""
         return {
             "num_heads": 3,
-            "decoders_out_channels": [3, 3, 3]
+            "decoders_out_channels": [3, 3, 3],
+            "wide_decoder": True,
         }
     
     def get_target_channels(self):
@@ -51,25 +52,3 @@ class MONKEYInference(BaseWSIInference):
             )
             prob_tensors[i] += _centroid_probs
 
-# Create global instance and expose start function for backward compatibility
-_monkey_inference = MONKEYInference()
-
-def start(
-    wsi_path: str,
-    det_models: list,
-    mask_path: str | None,
-    save_dir: str | None,
-    cache_dir: str = "./cache",
-    num_workers: int = 10,
-    batch_size: int = 64,
-):
-    """MONKEY inference entry point"""
-    return _monkey_inference.start(
-        wsi_path=wsi_path,
-        det_models=det_models,
-        mask_path=mask_path,
-        save_dir=save_dir,
-        cache_dir=cache_dir,
-        num_workers=num_workers,
-        batch_size=batch_size,
-    )

@@ -46,27 +46,3 @@ class PanNukeInference(BaseWSIInference):
         selected_channels = self.get_target_channels()
         for i, c in enumerate(selected_channels):
             prob_tensors[i] += probs[:, c:c+1, :, :]
-
-
-# Create global instance and expose start function for backward compatibility
-_pannuke_inference = PanNukeInference()
-
-def start(
-    wsi_path: str,
-    det_models: list,
-    mask_path: str | None,
-    save_dir: str | None,
-    cache_dir: str = "./cache",
-    num_workers: int = 10,
-    batch_size: int = 64,
-):
-    """PanNuke inference entry point"""
-    return _pannuke_inference.start(
-        wsi_path=wsi_path,
-        det_models=det_models,
-        mask_path=mask_path,
-        save_dir=save_dir,
-        cache_dir=cache_dir,
-        num_workers=num_workers,
-        batch_size=batch_size,
-    )
