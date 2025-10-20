@@ -21,17 +21,20 @@ Dependencies:
 """
 
 import os
-from typing import Any
 import shutil
+from typing import Any
 
 import cv2
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
 from PIL import Image
-from tiatoolbox.wsicore.wsireader import WSIReader
+from tiatoolbox.models.engine.semantic_segmentor import (
+    IOSegmentorConfig,
+    SemanticSegmentor,
+)
 from tiatoolbox.models.models_abc import ModelABC
-from tiatoolbox.models.engine.semantic_segmentor import IOSegmentorConfig, SemanticSegmentor
+from tiatoolbox.wsicore.wsireader import WSIReader
 
 
 class GrandQCModel(ModelABC):
@@ -119,7 +122,6 @@ class GrandQCModel(ModelABC):
 
         probs = probs.cpu().numpy()
         return [probs]
-    
 
 
 # Configuration constants
@@ -150,7 +152,6 @@ def apply_jpeg_compression(image):
     return cv2.imdecode(compressed, 1)
 
 
-
 def process_single_slide(slide_path: str, model_weights_path: str):
     """Process a single slide for tissue detection.
 
@@ -178,7 +179,6 @@ def process_single_slide(slide_path: str, model_weights_path: str):
     # slide = OpenSlide(slide_path)
     slide_reader = WSIReader.open(slide_path)
 
-
     # Get thumbnail at target MPP
     image_original = slide_reader.slide_thumbnail(resolution=DETECTION_MPP, units="mpp")
 
@@ -204,13 +204,15 @@ def process_single_slide(slide_path: str, model_weights_path: str):
     # Setting the save directory and delete previous results
     wsi_prediction_dir = "./tmp/wsi_prediction/"
     if os.path.exists(wsi_prediction_dir):
-        shutil.rmtree(wsi_prediction_dir)   
+        shutil.rmtree(wsi_prediction_dir)
 
-    predictor = SemanticSegmentor(model=grandQC_model, num_loader_workers=6, batch_size=32)
+    predictor = SemanticSegmentor(
+        model=grandQC_model, num_loader_workers=6, batch_size=32
+    )
     wsi_output = predictor.predict(
         imgs=["./temp_compressed_image.jpg"],
         mode="tile",
-        device='cuda',
+        device="cuda",
         ioconfig=iostate,
         crash_on_exception=True,
         save_dir=wsi_prediction_dir,
@@ -219,7 +221,7 @@ def process_single_slide(slide_path: str, model_weights_path: str):
     mask_path = f"{mask_path}.raw.0.npy"
     mask = np.load(mask_path)
 
-    tissue_mask = np.where(mask[:,:,0]> 0.5, 255, 0)
+    tissue_mask = np.where(mask[:, :, 0] > 0.5, 255, 0)
     tissue_mask = tissue_mask.astype(np.uint8)
 
     del model
@@ -255,7 +257,7 @@ def main():
         mask_result = process_single_slide(slide_path, MODEL_WEIGHT_PATH)
 
         if mask_result is not None:
-        #     # Convert mask to proper format for saving
+            #     # Convert mask to proper format for saving
 
             # Save the mask
             mask_filename = f"{slide_name}_MASK.png"
