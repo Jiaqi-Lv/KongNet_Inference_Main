@@ -11,7 +11,7 @@ class CoNICInference(BaseWSIInference):
         self.stride = 248
         self.resolution = 0.5
         self.units = 'mpp'
-        self.post_proc_size = 3
+        self.post_proc_size = 5 # or 3
         self.post_proc_threshold = 0.5
     
     def get_model_config(self):
