@@ -162,10 +162,10 @@ python inference_MONKEY.py \
 All pipelines output results in **SQLite annotation store format** (`.db` files) compatible with TIAToolbox.
 
 ### Output Files
-- **MIDOG**: `{wsi_name}_mitosis.db` - Mitotic figure detection points
-- **PanNuke**: `{wsi_name}_pannuke.db` - Multi-class cell detection points  
-- **CoNIC**: `{wsi_name}_conic.db` - 6-class cell detection points
-- **MONKEY**: `{wsi_name}_monkey.db` - Inflammatory cell detection points
+- **MIDOG**: `{wsi_name}_mitosis.db` 
+- **PanNuke**: `{wsi_name}_pannuke.db`  
+- **CoNIC**: `{wsi_name}_conic.db`
+- **MONKEY**: `{wsi_name}_monkey.db`
 
 ### Example Python Script for Loading Results
 ```python
