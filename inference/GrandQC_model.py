@@ -38,10 +38,10 @@ from tiatoolbox.wsicore.wsireader import WSIReader
 
 
 class GrandQCModel(ModelABC):
-    """Example model which can be used for image blurring."""
+    """GrandQC Model."""
 
     def __init__(self, grandQC_Model: torch.nn.Module) -> None:
-        """Initialize BlurModel."""
+        """Initialize GrandQCModel."""
         super().__init__()
         self._postproc = self.postproc
         self._preproc = self.preproc
@@ -176,7 +176,6 @@ def process_single_slide(slide_path: str, model_weights_path: str):
 
     grandQC_model = GrandQCModel(model)
 
-    # slide = OpenSlide(slide_path)
     slide_reader = WSIReader.open(slide_path)
 
     # Get thumbnail at target MPP
