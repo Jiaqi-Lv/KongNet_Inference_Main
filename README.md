@@ -24,8 +24,8 @@ pip install -r requirements.txt
 ```
 
 ### System Requirements
-- Python 3.10+
-- CUDA-compatible GPU (required)
+- Python 3.10+ (Recommended 3.12)
+- CUDA-compatible GPU (Recommended cuda > 12)
 - Sufficient RAM for WSI processing (Recommended at least 32GB)
 
 
