@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
 from inference.base_inference_interface import BaseInferenceInterface
 from inference.wsi_inference_CoNIC import CoNICInference

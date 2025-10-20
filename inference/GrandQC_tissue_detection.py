@@ -26,7 +26,6 @@ import cv2
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
-from openslide import OpenSlide
 from PIL import Image
 from tiatoolbox.wsicore.wsireader import WSIReader
 
