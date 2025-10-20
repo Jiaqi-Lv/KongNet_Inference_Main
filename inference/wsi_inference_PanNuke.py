@@ -1,4 +1,5 @@
 from inference.wsi_inference_base import BaseWSIInference
+import torch
 
 
 class PanNukeInference(BaseWSIInference):
@@ -23,21 +24,28 @@ class PanNukeInference(BaseWSIInference):
     
     def get_target_channels(self):
         """Return PanNuke target channels"""
-        return [5, 8, 11, 14, 17]
+        return [3, 5, 8, 11, 14, 17]
     
     def get_cell_channel_map(self):
         """Return PanNuke cell channel mapping"""
         return {
-            "neoplastic": 0,
-            "inflammatory": 1,
-            "connective": 2,
-            "dead": 3,
-            "epithelial": 4,
+            "overall": 0,
+            "neoplastic": 1,
+            "inflammatory": 2,
+            "connective": 3,
+            "dead": 4,
+            "epithelial": 5,
         }
     
     def get_output_suffix(self):
         """Return PanNuke output suffix"""
         return "_pannuke"
+    
+    def process_model_output(self, probs: torch.Tensor, prob_tensors: list, batch_size: int):
+        """Process model output for PanNuke - simple channel selection"""
+        selected_channels = self.get_target_channels()
+        for i, c in enumerate(selected_channels):
+            prob_tensors[i] += probs[:, c:c+1, :, :]
 
 
 # Create global instance and expose start function for backward compatibility

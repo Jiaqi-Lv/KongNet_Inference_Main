@@ -1,4 +1,5 @@
 from inference.wsi_inference_base import BaseWSIInference
+import torch
 
 
 class CoNICInference(BaseWSIInference):
@@ -39,6 +40,12 @@ class CoNICInference(BaseWSIInference):
     def get_output_suffix(self):
         """Return CoNIC output suffix"""
         return "_conic"
+    
+    def process_model_output(self, probs: torch.Tensor, prob_tensors: list, batch_size: int):
+        """Process model output for CoNIC - simple channel selection"""
+        selected_channels = self.get_target_channels()
+        for i, c in enumerate(selected_channels):
+            prob_tensors[i] += probs[:, c:c+1, :, :]
 
 
 # Create global instance and expose start function for backward compatibility

@@ -62,6 +62,21 @@ class BaseWSIInference(ABC):
         """Return suffix for output files"""
         pass
     
+    @abstractmethod
+    def process_model_output(self, probs: torch.Tensor, prob_tensors: list, batch_size: int):
+        """Process model output probabilities for target channels (in-place operation)
+        
+        This method modifies the prob_tensors list in-place by accumulating processed
+        probabilities. It does not return anything as the results are stored directly
+        in the provided prob_tensors.
+        
+        Args:
+            probs: Model output probabilities [B, C, H, W]
+            prob_tensors: List of probability tensors to accumulate results (modified in-place)
+            batch_size: Current batch size
+        """
+        pass
+    
     def detection_in_wsi(
         self,
         wsi_reader: WSIReader,
@@ -154,10 +169,8 @@ class BaseWSIInference(ABC):
                             logits = model(imgs)
                             probs = torch.sigmoid(logits)
 
-                        # Collect target channels
-                        selected_channels = self.get_target_channels()
-                        for i, c in enumerate(selected_channels):
-                            prob_tensors[i] += probs[:, c:c+1, :, :]
+                        # Process model output using subclass-specific logic
+                        self.process_model_output(probs, prob_tensors, batch_size_actual) 
 
                 predictions = torch.cat(
                     [p / len(models) for p in prob_tensors],
