@@ -25,7 +25,7 @@ from inference.data_utils import (
     imagenet_normalise_torch,
     slide_nms,
 )
-from inference.GrandQC_tissue_detection import process_single_slide
+from inference.GrandQC_model import process_single_slide
 from inference.prediction_utils import binary_det_post_process
 
 
