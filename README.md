@@ -274,13 +274,8 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 
 ## 🏆 Citation
 
-If you use this code in your research, please cite:
+We will update the citation in the next few days.
 
 ```bibtex
-@article{kongnet2024,
-  title={KongNet: A Multi-headed Deep Learning Model for Accurate Detection and Classification of Nuclei in Histopathology Images},
-  author={Jiaqi Lv, Esha Sadia Nasir, Kesi Xu, Mostafa Jahanifar, Brinder Singh Chohan, Behnaz Elhaminia, Shan E Ahmed Raza},
-  year={2025}
-}
 ```
 ---
