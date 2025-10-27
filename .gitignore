@@ -210,3 +210,4 @@ model_weights/
 test_input/
 test_output/
 ./inference.sbatch
+submit_inference.sbatch
