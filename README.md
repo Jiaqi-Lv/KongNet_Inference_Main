@@ -23,6 +23,11 @@ Install the required dependencies:
 pip install -r requirements.txt
 ```
 
+optional: testing
+```bash
+python tests/run_tests.py
+```
+
 ### System Requirements
 - Python 3.10+ (Recommended 3.12)
 - CUDA-compatible GPU (Recommended cuda > 12)
@@ -178,14 +183,15 @@ All pipelines output results in **SQLite annotation store format** (`.db` files)
 from tiatoolbox.annotation.storage import SQLiteStore
 
 # Load detection results
-store = SQLiteStore('/path/to/results/sample_mitosis.db')
-annotations = store.query()
+store = SQLiteStore('/example_output.db')
 
 # Access detection points
-for annotation in annotations:
+for annotation in store.values():
     geometry = annotation.geometry  # Point coordinates
     properties = annotation.properties  # Cell type, confidence, etc.
     print(f"Cell at ({geometry.x}, {geometry.y}): {properties}")
+
+store.close()
 ```
 
 ### Cell Types by Pipeline
@@ -194,12 +200,12 @@ for annotation in annotations:
 - **mitotic_figure**: Mitotic figure detection points
 
 #### PanNuke  
-- **overall**: All cells
 - **neoplastic**: Neoplastic cells
 - **inflammatory**: Inflammatory cells
 - **connective**: Connective tissue cells
 - **dead**: Dead cells
 - **epithelial**: Epithelial cells
+- (Output of overall detection head is omitted in WSI inference pipeline)
 
 #### CoNIC
 - **neutrophil**: Neutrophils
