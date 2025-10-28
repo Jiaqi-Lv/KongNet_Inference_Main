@@ -12,7 +12,7 @@ def main():
     interface = BaseInferenceInterface(
         inference_class=MIDOGInference,
         pipeline_name="MIDOG",
-        default_hf_repo="TIACentre/KongNet_MIDOG",
+        default_hf_repo="TIACentre/KongNet_pretrained_weights",
         default_checkpoint="KongNet_Det_MIDOG_1.pth",
     )
     interface.main()
