@@ -40,6 +40,8 @@ class BaseWSIInference(ABC):
         self.units = "mpp"
         self.post_proc_size = 11
         self.post_proc_threshold = 0.5
+        self.nms_box_size = 11
+        self.nms_threshold = 0.5
         self.target_channels = []
         self.cell_channel_map = {}
         self.output_suffix = "_detection"
@@ -341,8 +343,8 @@ class BaseWSIInference(ABC):
             detection_record=all_records,
             detection_mpp=self.resolution,
             tile_size=4096,
-            box_size=self.post_proc_size,
-            overlap_thresh=self.post_proc_threshold,
+            box_size=self.nms_box_size,
+            overlap_thresh=self.nms_threshold,
             cache_dir=cache_dir,
             num_workers=num_workers,
         )

@@ -14,6 +14,7 @@ class MONKEYInference(BaseWSIInference):
         self.resolution = 0.5
         self.units = "mpp"
         self.post_proc_size = 11
+        self.nms_box_size = 11
         self.post_proc_threshold = 0.5
 
     def get_model_config(self):

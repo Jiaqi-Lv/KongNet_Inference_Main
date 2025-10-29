@@ -14,6 +14,7 @@ class PanNukeInference(BaseWSIInference):
         self.resolution = 0.25
         self.units = "mpp"
         self.post_proc_size = 11  # or 9
+        self.nms_box_size = 11  # or 9
         self.post_proc_threshold = 0.5
 
     def get_model_config(self):
