@@ -159,8 +159,8 @@ python inference_PUMA_T2.py \
     --output_dir /results/puma_predictions \
     --cache_dir /fast_ssd/cache \
     --weights_dir ./pretrained_models \
-    --checkpoint_name "KongNet_PUMA_T2_3.pth" \
-    --additional_checkpoints "KongNet_PUMA_T2_4.pth" \
+    --checkpoint_name "KongNet_PUMA_T2_2.pth" \
+    --additional_checkpoints "KongNet_PUMA_T2_3.pth" \
     --mask_dir /data/puma/tissue_masks \
     --batch_size 64 \
     --num_workers 10
