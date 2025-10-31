@@ -6,7 +6,7 @@ from inference.wsi_inference_base import BaseWSIInference
 class PUMAInference(BaseWSIInference):
     """PUMA-specific inference pipeline"""
 
-    def __init__(self, track_id: int = 1):
+    def __init__(self):
         super().__init__()
         # PUMA-specific configuration
         self.patch_size = 256
@@ -16,6 +16,12 @@ class PUMAInference(BaseWSIInference):
         self.post_proc_size = 13
         self.nms_box_size = 15
         self.post_proc_threshold = 0.5
+        self.track_id = 1  # Default to track 1; can be set to 2 for track 2
+
+    def set_track(self, track_id: int):
+        """Set the PUMA track ID (1 or 2)"""
+        if track_id not in [1, 2]:
+            raise ValueError("track_id must be either 1 or 2")
         self.track_id = track_id
 
     def get_model_config(self):

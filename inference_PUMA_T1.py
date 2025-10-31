@@ -10,11 +10,12 @@ logger.disabled = True
 def main():
     """Main entry point for PUMA track 1 inference"""
     interface = BaseInferenceInterface(
-        inference_class=PUMAInference(track_id=1),
+        inference_class=PUMAInference,
         pipeline_name="PUMA",
         default_hf_repo="TIACentre/KongNet_pretrained_weights",
         default_checkpoint="KongNet_PUMA_T1_3.pth",
     )
+    interface.inference_instance.set_track(track_id=1)
     interface.main()
 
 

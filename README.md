@@ -78,7 +78,7 @@ python inference_MONKEY.py \
 
 #### MIDOG
 ```bash
-# Full configuration example with model ensemble
+# Full configuration example
 python inference_MIDOG.py \
     --input_dir /data/midog/test_set \
     --output_dir /results/midog_predictions \
@@ -123,7 +123,7 @@ python inference_CoNIC.py \
 
 #### MONKEY
 ```bash
-# Full configuration example with inflammatory cell detection
+# Full configuration example 
 python inference_MONKEY.py \
     --input_dir /data/monkey/test_set \
     --output_dir /results/monkey_predictions \
@@ -131,6 +131,36 @@ python inference_MONKEY.py \
     --weights_dir ./pretrained_models \
     --checkpoint_name "KongNet_MONKEY_1.pth" \
     --additional_checkpoints "KongNet_MONKEY_2.pth" \
+    --mask_dir /data/monkey/tissue_masks \
+    --batch_size 64 \
+    --num_workers 10
+```
+
+#### PUMA Track 1
+```bash
+# Full configuration example 
+python inference_PUMA_T1.py \
+    --input_dir /data/puma/test_set \
+    --output_dir /results/puma_predictions \
+    --cache_dir /fast_ssd/cache \
+    --weights_dir ./pretrained_models \
+    --checkpoint_name "KongNet_PUMA_T1_3.pth" \
+    --additional_checkpoints "KongNet_PUMA_T1_4.pth" \
+    --mask_dir /data/monkey/tissue_masks \
+    --batch_size 64 \
+    --num_workers 10
+```
+
+#### PUMA Track 2
+```bash
+# Full configuration example 
+python inference_PUMA_T2.py \
+    --input_dir /data/puma/test_set \
+    --output_dir /results/puma_predictions \
+    --cache_dir /fast_ssd/cache \
+    --weights_dir ./pretrained_models \
+    --checkpoint_name "KongNet_PUMA_T2_3.pth" \
+    --additional_checkpoints "KongNet_PUMA_T2_4.pth" \
     --mask_dir /data/monkey/tissue_masks \
     --batch_size 64 \
     --num_workers 10
