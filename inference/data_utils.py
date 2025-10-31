@@ -191,7 +191,6 @@ def filter_detection_with_mask(
         fitlered_records: [{'x','y','type','prob'}]
     """
     scale_factor = mask_mpp / points_mpp
-    print(f"Scale factor: {scale_factor}")
 
     filtered_records: list[dict] = []
     for record in tqdm(
@@ -201,7 +200,6 @@ def filter_detection_with_mask(
     ):
         x = record["x"]
         y = record["y"]
-        print(record)
 
         x_in_mask = int(np.round(x / scale_factor))
         y_in_mask = int(np.round(y / scale_factor))

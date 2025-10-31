@@ -314,9 +314,6 @@ class BaseWSIInference(ABC):
         z_preds = zarr.open(z_preds_path, mode="r")
         z_coords = zarr.open(z_coords_path, mode="r")
 
-        print(f"Predictions shape: {z_preds.shape}")
-        print(f"Coordinates shape: {z_coords.shape}")
-
         start_time = time.time()
         cell_type_points = self.process_detection_masks_chunked_mp_streamed(
             predictions=z_preds,
