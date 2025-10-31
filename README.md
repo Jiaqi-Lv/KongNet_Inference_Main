@@ -146,7 +146,7 @@ python inference_PUMA_T1.py \
     --weights_dir ./pretrained_models \
     --checkpoint_name "KongNet_PUMA_T1_3.pth" \
     --additional_checkpoints "KongNet_PUMA_T1_4.pth" \
-    --mask_dir /data/monkey/tissue_masks \
+    --mask_dir /data/puma/tissue_masks \
     --batch_size 64 \
     --num_workers 10
 ```
@@ -161,7 +161,7 @@ python inference_PUMA_T2.py \
     --weights_dir ./pretrained_models \
     --checkpoint_name "KongNet_PUMA_T2_3.pth" \
     --additional_checkpoints "KongNet_PUMA_T2_4.pth" \
-    --mask_dir /data/monkey/tissue_masks \
+    --mask_dir /data/puma/tissue_masks \
     --batch_size 64 \
     --num_workers 10
 ```
