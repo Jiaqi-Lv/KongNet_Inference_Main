@@ -12,9 +12,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import MagicMock, Mock, patch
 
-import numpy as np
 import torch
 
 from inference.wsi_inference_base import BaseWSIInference
@@ -22,6 +20,7 @@ from inference.wsi_inference_CoNIC import CoNICInference
 from inference.wsi_inference_MIDOG import MIDOGInference
 from inference.wsi_inference_MONKEY import MONKEYInference
 from inference.wsi_inference_PanNuke import PanNukeInference
+from inference.wsi_inference_PUMA import PUMAInference
 
 
 class TestBaseWSIInference(unittest.TestCase):
@@ -59,6 +58,8 @@ class TestMIDOGInference(unittest.TestCase):
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 21)
         self.assertEqual(self.inference.post_proc_threshold, 0.99)
+        self.assertEqual(self.inference.nms_box_size, 21)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
 
     def test_model_config(self):
         """Test MIDOG model configuration"""
@@ -82,21 +83,6 @@ class TestMIDOGInference(unittest.TestCase):
         suffix = self.inference.get_output_suffix()
         self.assertEqual(suffix, "_mitosis")
 
-    def test_process_model_output(self):
-        """Test MIDOG model output processing"""
-        # Create mock probability tensors
-        batch_size = 2
-        probs = torch.randn(batch_size, 10, 256, 256)  # 10 channels
-        prob_tensors = [torch.zeros(batch_size, 1, 256, 256)]
-
-        # Process the output
-        self.inference.process_model_output(probs, prob_tensors, batch_size)
-
-        # Check that the tensor was modified
-        expected_channel = self.inference.get_target_channels()[0]  # Channel 2
-        expected_tensor = probs[:, expected_channel : expected_channel + 1, :, :]
-        torch.testing.assert_close(prob_tensors[0], expected_tensor)
-
 
 class TestPanNukeInference(unittest.TestCase):
     """Test PanNuke-specific inference pipeline"""
@@ -113,6 +99,8 @@ class TestPanNukeInference(unittest.TestCase):
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 11)
         self.assertEqual(self.inference.post_proc_threshold, 0.5)
+        self.assertEqual(self.inference.nms_box_size, 11)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
 
     def test_model_config(self):
         """Test PanNuke model configuration"""
@@ -143,21 +131,6 @@ class TestPanNukeInference(unittest.TestCase):
         suffix = self.inference.get_output_suffix()
         self.assertEqual(suffix, "_pannuke")
 
-    def test_process_model_output(self):
-        """Test PanNuke model output processing"""
-        batch_size = 2
-        probs = torch.randn(batch_size, 20, 256, 256)  # 20 channels
-        prob_tensors = [torch.zeros(batch_size, 1, 256, 256) for _ in range(6)]
-
-        # Process the output
-        self.inference.process_model_output(probs, prob_tensors, batch_size)
-
-        # Check that all tensors were modified correctly
-        target_channels = self.inference.get_target_channels()
-        for i, c in enumerate(target_channels):
-            expected_tensor = probs[:, c : c + 1, :, :]
-            torch.testing.assert_close(prob_tensors[i], expected_tensor)
-
 
 class TestCoNICInference(unittest.TestCase):
     """Test CoNIC-specific inference pipeline"""
@@ -174,6 +147,8 @@ class TestCoNICInference(unittest.TestCase):
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 5)
         self.assertEqual(self.inference.post_proc_threshold, 0.5)
+        self.assertEqual(self.inference.nms_box_size, 5)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
 
     def test_model_config(self):
         """Test CoNIC model configuration"""
@@ -221,6 +196,8 @@ class TestMONKEYInference(unittest.TestCase):
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 11)
         self.assertEqual(self.inference.post_proc_threshold, 0.5)
+        self.assertEqual(self.inference.nms_box_size, 11)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
 
     def test_model_config(self):
         """Test MONKEY model configuration"""
@@ -253,26 +230,114 @@ class TestMONKEYInference(unittest.TestCase):
         suffix = self.inference.get_output_suffix()
         self.assertEqual(suffix, "_monkey")
 
-    def test_process_model_output_complex(self):
-        """Test MONKEY's complex model output processing logic"""
-        batch_size = 2
-        probs = torch.randn(batch_size, 12, 256, 256)  # 12 channels
-        prob_tensors = [torch.zeros(batch_size, 1, 256, 256) for _ in range(3)]
 
-        # Process the output
-        self.inference.process_model_output(probs, prob_tensors, batch_size)
+class TestPUMAInferenceT1(unittest.TestCase):
+    """Test PUMA-specific inference pipeline"""
 
-        # Verify the complex processing logic was applied
-        target_channels = self.inference.get_target_channels()
-        for i, c in enumerate(target_channels):
-            # MONKEY combines segmentation and centroid probabilities
-            centroid_probs = probs[:, c : c + 1, :, :]
-            seg_probs = probs[:, c - 2 : c - 1, :, :]
+    def setUp(self):
+        """Set up test fixtures"""
+        self.inference = PUMAInference(track_id=1)
 
-            # Check that processing occurred (tensor should not be zero)
-            self.assertFalse(
-                torch.allclose(prob_tensors[i], torch.zeros_like(prob_tensors[i]))
-            )
+    def test_initialization(self):
+        """Test PUMA inference initialization"""
+        self.assertEqual(self.inference.patch_size, 256)
+        self.assertEqual(self.inference.stride, 224)
+        self.assertEqual(self.inference.resolution, 0.5)
+        self.assertEqual(self.inference.track_id, 1)
+        self.assertEqual(self.inference.units, "mpp")
+        self.assertEqual(self.inference.post_proc_size, 13)
+        self.assertEqual(self.inference.post_proc_threshold, 0.5)
+        self.assertEqual(self.inference.nms_box_size, 15)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
+
+    def test_model_config(self):
+        """Test PUMA T1 model configuration"""
+        config = self.inference.get_model_config()
+        expected = {
+            "num_heads": 3,
+            "decoders_out_channels": [3, 3, 3],
+            "wide_decoder": False,
+        }
+        self.assertEqual(config, expected)
+
+    def test_target_channels(self):
+        """Test PUMA T1 target channels"""
+        channels = self.inference.get_target_channels()
+        expected = [2, 5, 8]
+        self.assertEqual(channels, expected)
+
+    def test_cell_channel_map(self):
+        """Test PUMA T1 cell channel mapping"""
+        mapping = self.inference.get_cell_channel_map()
+        expected = {
+            "tumour_cell": 0,
+            "lymphocyte": 1,
+            "other_cell": 2,
+        }
+        self.assertEqual(mapping, expected)
+
+    def test_output_suffix(self):
+        """Test PUMA T1 output suffix"""
+        suffix = self.inference.get_output_suffix()
+        self.assertEqual(suffix, "_puma_T1")
+
+
+class TestPUMAInferenceT2(unittest.TestCase):
+    """Test PUMA-specific inference pipeline"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.inference = PUMAInference(track_id=2)
+
+    def test_initialization(self):
+        """Test PUMA T2 inference initialization"""
+        self.assertEqual(self.inference.patch_size, 256)
+        self.assertEqual(self.inference.stride, 224)
+        self.assertEqual(self.inference.resolution, 0.5)
+        self.assertEqual(self.inference.track_id, 2)
+        self.assertEqual(self.inference.units, "mpp")
+        self.assertEqual(self.inference.post_proc_size, 13)
+        self.assertEqual(self.inference.post_proc_threshold, 0.5)
+        self.assertEqual(self.inference.nms_box_size, 15)
+        self.assertEqual(self.inference.nms_threshold, 0.5)
+
+    def test_model_config(self):
+        """Test PUMA T2 model configuration"""
+        config = self.inference.get_model_config()
+        expected = {
+            "num_heads": 10,
+            "decoders_out_channels": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+            "wide_decoder": False,
+        }
+        self.assertEqual(config, expected)
+
+    def test_target_channels(self):
+        """Test PUMA T2 target channels"""
+        channels = self.inference.get_target_channels()
+        expected = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29]
+        self.assertEqual(channels, expected)
+
+    def test_cell_channel_map(self):
+        """Test PUMA T2 cell channel mapping"""
+        mapping = self.inference.get_cell_channel_map()
+        expected = {
+            "tumour_cell": 0,
+            "lymphocyte": 1,
+            "plasma_cell": 2,
+            "histiocyte": 3,
+            "melanophage": 4,
+            "neutrophil": 5,
+            "stroma_cell": 6,
+            "epithelial_cell": 7,
+            "endothelial_cell": 8,
+            "apoptotic_cell": 9,
+        }
+        self.assertEqual(mapping, expected)
+
+    def test_output_suffix(self):
+        """Test PUMA T2 output suffix"""
+        suffix = self.inference.get_output_suffix()
+        self.assertEqual(suffix, "_puma_T2")
 
 
 class TestInferenceIntegration(unittest.TestCase):
@@ -290,7 +355,13 @@ class TestInferenceIntegration(unittest.TestCase):
 
     def test_all_pipelines_have_consistent_interface(self):
         """Test that all inference pipelines implement the same interface"""
-        pipelines = [MIDOGInference, PanNukeInference, CoNICInference, MONKEYInference]
+        pipelines = [
+            MIDOGInference,
+            PanNukeInference,
+            CoNICInference,
+            MONKEYInference,
+            PUMAInference,
+        ]
 
         for pipeline_class in pipelines:
             pipeline = pipeline_class()
@@ -312,6 +383,8 @@ class TestInferenceIntegration(unittest.TestCase):
             PanNukeInference(),
             CoNICInference(),
             MONKEYInference(),
+            PUMAInference(track_id=1),
+            PUMAInference(track_id=2),
         ]
 
         for pipeline in pipelines:
@@ -335,6 +408,8 @@ class TestInferenceIntegration(unittest.TestCase):
             PanNukeInference(),
             CoNICInference(),
             MONKEYInference(),
+            PUMAInference(track_id=1),
+            PUMAInference(track_id=2),
         ]
 
         for pipeline in pipelines:

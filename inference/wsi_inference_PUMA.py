@@ -6,7 +6,7 @@ from inference.wsi_inference_base import BaseWSIInference
 class PUMAInference(BaseWSIInference):
     """PUMA-specific inference pipeline"""
 
-    def __init__(self, track_id: int):
+    def __init__(self, track_id: int = 1):
         super().__init__()
         # PUMA-specific configuration
         self.patch_size = 256
