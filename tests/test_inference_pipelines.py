@@ -236,13 +236,14 @@ class TestPUMAInferenceT1(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.inference = PUMAInference(track_id=1)
+        self.inference = PUMAInference()
+        self.inference.set_track(track_id=1)
 
     def test_initialization(self):
         """Test PUMA inference initialization"""
         self.assertEqual(self.inference.patch_size, 256)
         self.assertEqual(self.inference.stride, 224)
-        self.assertEqual(self.inference.resolution, 0.5)
+        self.assertEqual(self.inference.resolution, 0.25)
         self.assertEqual(self.inference.track_id, 1)
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 13)
@@ -287,13 +288,14 @@ class TestPUMAInferenceT2(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.inference = PUMAInference(track_id=2)
+        self.inference = PUMAInference()
+        self.inference.set_track(track_id=2)
 
     def test_initialization(self):
         """Test PUMA T2 inference initialization"""
         self.assertEqual(self.inference.patch_size, 256)
         self.assertEqual(self.inference.stride, 224)
-        self.assertEqual(self.inference.resolution, 0.5)
+        self.assertEqual(self.inference.resolution, 0.25)
         self.assertEqual(self.inference.track_id, 2)
         self.assertEqual(self.inference.units, "mpp")
         self.assertEqual(self.inference.post_proc_size, 13)
@@ -383,8 +385,7 @@ class TestInferenceIntegration(unittest.TestCase):
             PanNukeInference(),
             CoNICInference(),
             MONKEYInference(),
-            PUMAInference(track_id=1),
-            PUMAInference(track_id=2),
+            PUMAInference(),
         ]
 
         for pipeline in pipelines:
@@ -408,8 +409,7 @@ class TestInferenceIntegration(unittest.TestCase):
             PanNukeInference(),
             CoNICInference(),
             MONKEYInference(),
-            PUMAInference(track_id=1),
-            PUMAInference(track_id=2),
+            PUMAInference(),
         ]
 
         for pipeline in pipelines:
