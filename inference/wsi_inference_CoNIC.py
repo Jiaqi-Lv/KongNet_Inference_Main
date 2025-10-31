@@ -14,6 +14,7 @@ class CoNICInference(BaseWSIInference):
         self.resolution = 0.5
         self.units = "mpp"
         self.post_proc_size = 5  # or 3
+        self.nms_box_size = 5  # or 3
         self.post_proc_threshold = 0.5
 
     def get_model_config(self):

@@ -14,6 +14,7 @@ class MIDOGInference(BaseWSIInference):
         self.resolution = 0.5
         self.units = "mpp"
         self.post_proc_size = 21
+        self.nms_box_size = 21
         self.post_proc_threshold = 0.99
 
     def get_model_config(self):
