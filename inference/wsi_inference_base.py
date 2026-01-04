@@ -390,7 +390,7 @@ class BaseWSIInference(ABC):
         # Handle tissue mask
         if mask_path is None:
             hf_repo_id = "TIACentre/GrandQC_Tissue_Detection"
-            checkpoint_name = "grandqc_tissue_detection_mpp10.pth"
+            checkpoint_name = "grandqc_tissue_detection.pth"
             print(
                 f"Downloading GrandQC weights from Hugging Face repo: {hf_repo_id}, checkpoint: {checkpoint_name}"
             )
