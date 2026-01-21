@@ -215,8 +215,9 @@ class KongNetToQuPathConverter:
         for db_file in db_files:
             # Extract WSI ID and create output structure
             wsi_id = self.extract_wsi_id(db_file.name)
+            fn = db_file.name.replace(".db", ".geojson")
             output_wsi_dir = self.output_dir / wsi_id
-            output_file = output_wsi_dir / "KongNet_CoNIC.geojson"
+            output_file = output_wsi_dir / fn
 
             logger.info(f"Processing {db_file.name} for WSI ID: {wsi_id}")
 

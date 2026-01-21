@@ -208,6 +208,9 @@ All pipelines output results in **SQLite annotation store format** (`.db` files)
 - **CoNIC**: `{wsi_name}_conic.db`
 - **MONKEY**: `{wsi_name}_monkey.db`
 
+If you want to convert the output file into geojson (for example to visualise using QuPath),  
+You can use `output_to_qupath.py`, you may need to modify the `DEFAULT_COLOR_MAPPING` variable.
+
 ### Example Python Script for Loading Results
 ```python
 from tiatoolbox.annotation.storage import SQLiteStore
