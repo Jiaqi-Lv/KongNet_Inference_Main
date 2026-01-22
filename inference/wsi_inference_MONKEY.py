@@ -11,7 +11,7 @@ class MONKEYInference(BaseWSIInference):
         # MONKEY-specific configuration
         self.patch_size = 256
         self.stride = 224
-        self.resolution = 0.5
+        self.resolution = 0.25
         self.units = "mpp"
         self.post_proc_size = 11
         self.nms_box_size = 11
