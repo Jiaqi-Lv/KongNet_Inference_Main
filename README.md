@@ -307,18 +307,20 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 
 ## 🏆 Citation
 
-[KongNet: A Multi-headed Deep Learning Model for Detection and Classification of Nuclei in Histopathology Images](https://arxiv.org/abs/2510.23559)
+[KongNet: A Multi-headed Deep Learning Model for Detection and Classification of Nuclei in Histopathology Images](https://www.sciencedirect.com/science/article/pii/S1361841526003026)
 
 ```bibtex
-@misc{
-    lv2025kongnetmultiheadeddeeplearning,
-    title={KongNet: A Multi-headed Deep Learning Model for Detection and Classification of Nuclei in Histopathology Images}, 
-    author={Jiaqi Lv and Esha Sadia Nasir and Kesi Xu and Mostafa Jahanifar and Brinder Singh Chohan and Behnaz Elhaminia and Shan E Ahmed Raza},
-    year={2025},
-    eprint={2510.23559},
-    archivePrefix={arXiv},
-    primaryClass={eess.IV},
-    url={https://arxiv.org/abs/2510.23559}, 
+@article{LV2026104233,
+title = {KongNet: A multi-headed deep learning model for detection and classification of nuclei in histopathology images},
+journal = {Medical Image Analysis},
+volume = {114},
+pages = {104233},
+year = {2026},
+issn = {1361-8415},
+doi = {https://doi.org/10.1016/j.media.2026.104233},
+url = {https://www.sciencedirect.com/science/article/pii/S1361841526003026},
+author = {Jiaqi Lv and Esha Sadia Nasir and Kesi Xu and Mostafa Jahanifar and Brinder Singh Chohan and Behnaz Elhaminia and Shan E Ahmed Raza},
+keywords = {Nuclei detection, Deep learning, PAS-stained images, H&E-stained images},
 }
 ```
 ---
